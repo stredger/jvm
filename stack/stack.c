@@ -2,7 +2,7 @@
 #include "stack.h"
 #include <stdio.h>
 
-int push(int **ele, stack *s) {
+int push(void **ele, stack *s) {
 
   if (s->head == &s->data[STACK_SIZE])
     return -1;
@@ -14,7 +14,7 @@ int push(int **ele, stack *s) {
 }
 
 
-int *peek(stack *s) {
+void *peek(stack *s) {
   if (s->head == s->data)
     return 0;
   //printf("%d", (int) s->head);
@@ -22,7 +22,7 @@ int *peek(stack *s) {
 }
 
 
-int *pop(stack *s) {
+void *pop(stack *s) {
   if (s->head == s->data)
     return 0;
   return *(--s->head);
@@ -42,8 +42,8 @@ int main(int argc, char *argv[]) {
   int i = 1;
   int *j = &i;
 
-  push(&j,s);
-  printf("%d", *peek(s));
+  push((void*)&j,s);
+  printf("%d", *( (int*)peek(s)));
 
   return 0;
 }

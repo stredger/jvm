@@ -4,12 +4,12 @@
 #define STACK_SIZE 65536
 
 typedef struct stack_t {
-  int *data[STACK_SIZE];
-  int **head;
+  void *data[STACK_SIZE];
+  void **head;
 } stack;
 
 stack *create_stack();
-int push(int **ele, stack *s);
-int *peek(stack *s);
-int *pop(stack *s);
+int push(void **ele, stack *s);
+void *peek(stack *s);
+void *pop(stack *s);
 
