@@ -318,6 +318,27 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize);
     break;
 
+  case 0x14: // ldc2_w  TODO rest of the cases
+    varnum = (m->code[ipos+1] << 8) + m->code[ipos+2];	
+	switch(cf->cp_tag[varnum]) {
+		case 3: // CP_Integer
+			stackbase[(*stkSizePtr)++] = "I";
+			break;
+		case 4: // CP_Float
+			stackbase[(*stkSizePtr)++] = "F";
+			break;
+		case 5: // CP_Long
+			stackbase[(*stkSizePtr)++] = "l";
+		    stackbase[(*stkSizePtr)++] = "L"; 
+			break;
+		case 6: // CP_Double
+			stackbase[(*stkSizePtr)++] = "d";
+		    stackbase[(*stkSizePtr)++] = "D"; 
+			break;
+	}		
+	updateInstruction(&itable[ipos], &itable[ipos+3], typeArrSize);
+	break;
+	
   case 0x15: // iload
     varnum = m->code[ipos+1];
     if ( checkStackOverflow(*stkSizePtr, 1, m->max_stack) == -1 ||
@@ -1153,22 +1174,40 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     varnum = (m->code[ipos+1] << 8) + m->code[ipos+2];
     printf("JOSH TEST: %s\n", GetCPItemAsString(cf, varnum));
 
-	break;
-	
-  case 0xb7: // invokespecial
-    varnum = (m->code[ipos+1] << 8) + m->code[ipos+2];
-	
-	tmpArgs = AnalyzeInvoke(cf, varnum, 0, tmpRets, &tmpArgsSize);
-	printf("JOSH TEST: Ret=%s ArgsSize=%d\n", tmpRets[0], tmpArgsSize);
+	break;*/
 
-	//for(tmpIndex = 0; tmpIndex < tmpArgsSize; tmpIndex++) {
-		//tmpIndex = tmpArgsSize-1;
-		//printf("JOSH TEST: Arg=%s\n", tmpArgs[tmpIndex]);	
-	//}
-	
+  case 0xb6: // invokevirtual
+  case 0xb7: // invokespecial
+  case 0xb8: // invokestatic
+    varnum = (m->code[ipos+1] << 8) + m->code[ipos+2];
+	tmpRets = SafeMalloc(sizeof(char*));
+	if (op == 0xb8)
+	  tmpArgs = AnalyzeInvoke(cf, varnum, 1, tmpRets, &tmpArgsSize);
+	else
+	  tmpArgs = AnalyzeInvoke(cf, varnum, 0, tmpRets, &tmpArgsSize);
+	// Pop arguments off the stack (pop two spots if Dd or Ll)
+	for(tmpIndex = 0; tmpIndex < tmpArgsSize; tmpIndex++) {
+	  if(strcmp(tmpArgs[tmpIndex], "Dd") == 0 || strcmp(tmpArgs[tmpIndex], "Ll") == 0)
+        stackbase[--(*stkSizePtr)] = "-";
+      stackbase[--(*stkSizePtr)] = "-";
+	}
+	// If the return type is not void (-), push it on the stack
+	if(strcmp(tmpRets[0], "-") != 0) {
+	    if(strcmp(tmpRets[0], "Dd") == 0) {
+		  stackbase[(*stkSizePtr)++] = "d";
+		  stackbase[(*stkSizePtr)++] = "D";
+		}
+		else if(strcmp(tmpRets[0], "Ll") == 0) {
+		  stackbase[(*stkSizePtr)++] = "l";
+		  stackbase[(*stkSizePtr)++] = "L";
+		}
+		else
+          stackbase[(*stkSizePtr)++] = SafeStrdup(tmpRets[0]);
+	}
+	SafeFree(tmpRets);
 	updateInstruction(&itable[ipos], &itable[ipos+3], typeArrSize);
 	break;
-	*/
+
 	
   case 0xbb: // new
 	varnum = (m->code[ipos+1] << 8) + m->code[ipos+2];
