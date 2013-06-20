@@ -1143,6 +1143,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
   case 0xb1: // return
     break;
 */
+
+	
   case 0xbb: // new
 	varnum = (m->code[ipos+1] << 8) + m->code[ipos+2];
 	if ( checkStackOverflow(*stkSizePtr, 1, m->max_stack) == -1 )
@@ -1150,11 +1152,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     tmpStr = GetCPItemAsString(cf, varnum);
     stackbase[(*stkSizePtr)++] = SafeStrcat("A", tmpStr);
 	SafeFree(tmpStr);
-    updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize);
+    updateInstruction(&itable[ipos], &itable[ipos+3], typeArrSize);
 	break;
-
-/* ^^ create new object of type identified by class reference in constant pool index (i1 << 8 + i2) */
-    
   
   case 0xc6: // ifnull
   case 0xc7: // ifnonnull
@@ -1205,6 +1204,7 @@ static void verifyMethod( ClassFile *cf, method_info *m ) {
 
     do {
       if (tracingExecution & TRACE_VERIFY) {
+	fprintf(stdout, "Instruction %d %s:\n", ipos, opcodes[m->code[ipos]].opcodeName);
 	fprintf(stdout, "Pre Instruction ");
 	printInstructionInfo(&itable[ipos], m->max_locals, m->max_stack);
       }
