@@ -9,47 +9,14 @@ push / pop functions
 add verification and vbit to see if all inline instructions present n' shit
 update instruction should check if last instruction for "falling off end"
 fix dups
-
-
-
-close
-
-
-{ 0X53, "aastore",      "", "AIA>" },   /* store into a reference in an array */
+aastore???
 
 
 
 should do
 
-
-{ 0X12, "ldc",          "i", ">X" },    /* push a constant #index from a constant pool (String, int or float) onto the stack */
-{ 0X13, "ldc_w",        "ii", ">X" },   /* push a constant #index from a constant pool (String, int or float) onto the stack (wide index is constructed as i1 << 8 + i2) */
-{ 0X14, "ldc2_w",       "ii", ">X" },   /* push a constant #index from a constant pool (double or long) onto the stack (wide index is constructed as i1 << 8 + i2) */
-
-{ 0Xb2, "getstatic",    "ii", ">X" },   /* get a static field value of a class, where the field is identified by field reference in the constant pool index (index1 << 8 + index2) */
-{ 0Xb3, "putstatic",    "ii", "X>" },   /* set static field to value in a class, where the field is identified by a field reference index in constant pool (i1 << 8 + i2) */
-
---{ 0Xb4, "getfield",     "ii", "A>X" },  /* get a field value of an object objectref, where the field is identified by field reference in the constant pool index (index1 << 8 + index2) */
-
-{ 0Xb5, "putfield",     "ii", "AX>" },  /* set field to value in an object objectref, where the field is identified by a field reference index in constant pool (i1 << 8 + i2) */
-<<<<<<< HEAD
-
-=======
-{ 0Xb6, "invokevirtual", "ii", "A*>*" }, /* invoke virtual method on object objectref, where the method is identified by method reference index in constant pool (i1 << 8 + i2) */
-
---{ 0Xb7, "invokespecial", "ii", "A*>*" }, /* invoke instance method on object objectref, where the method is identified by method reference index in constant pool (i1 << 8 + i2) */
-
-{ 0Xb8, "invokestatic", "ii", "*>*" },   /* invoke a static method, where the method is identified by method reference index in constant pool (i1 << 8 + i2) */
->>>>>>> 5ea9996e6222f18032404cab4ac9caf077bdabaa
-{ 0Xb9, "invokeinterface", "iic0", "A*>*" }, /* invoke an interface method on object objectref, where the interface method is identified by method reference index in constant pool (i1 << 8 + i2) */
-{ 0Xba, "invokedynamic", "ii00", "*>*" }, /* invoke a dynamic method identified by method reference index in constant pool (i1 << 8 + i2) */
-
---{ 0Xbb, "new",          "ii", ">A" },   /* create new object of type identified by class reference in constant pool index (i1 << 8 + i2) */
-
-
-{ 0Xbd, "anewarray",    "ii", "I>A" },  /* create a new array of references of length count and component type identified by the class reference index (i1 << 8 + i2) in the constant pool */
-
 { 0Xc0, "checkcast",    "ii", "A>A" },  /* check whether an objectref is of a certain type, the class reference of which is in the constant pool at index (i1 << 8 + i2) */
+
 { 0Xc1, "instanceof",   "ii", "A>I" },  /* determine if an object objectref is of a given type, identified by class reference index in constant pool (i1 << 8 + i2) */
 
 
@@ -58,8 +25,7 @@ should do
 could do
 
 
-{ 0Xa8, "jsr",          "bb", ">R" },   /* jump to subroutine at branchoffset (signed short constructed from unsigned bytes b1 << 8 + b2) and place the return address on the stack */
-{ 0Xa9, "ret",          "i", "" },      /* continue execution from address taken from a local variable #index (the asymmetry with jsr is intentional) */
+
 { 0Xaa, "tableswitch",  "4+", "I>" },   /* continue execution from an address in the table at offset index */
 { 0Xab, "lookupswitch", "4+", "I>" },   /* a target address is looked up from a table using a key and execution continues from the instruction at that address */
 
@@ -71,7 +37,3 @@ could do
 { 0Xc4, "wide",         "3+", "" },     /* execute opcode, where opcode is either iload, fload, aload, lload, dload, istore, fstore, astore, lstore, dstore, or ret, but assume the index is 16 bit; or execute iinc, where the index is 16 bits and the constant to increment by is a signed 16 bit short */
 
 { 0Xc5, "multianewarray", "iii", "I*>A" }, /* create a new array of i3 dimensions with elements of type identified by class reference in constant pool index (i1 << 8 + i2); the sizes of each dimension is identified by count1, [count2, etc.] */
-
-
-{ 0Xc8, "goto_w",       "bbbb", "" },   /* go to another instruction at branchoffset (signed int constructed from unsigned bytes b1 << 24 + b2 << 16 + b3 << 8 + b4) */
-{ 0Xc9, "jsr_w",        "bbbb", ">R" }, /* jump to subroutine at branchoffset (signed int constructed from unsigned bytes b1 << 24 + b2 << 16 + b3 << 8 + b4) and place the return address on the stack */
