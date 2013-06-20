@@ -1335,7 +1335,7 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 
   case 0xb1: // return
     // should have void retType
-    if ( compareSimpleTypes(retType, "V") )
+    if ( compareSimpleTypes(retType, "-") )
       return -1;
     break;
 
@@ -1526,7 +1526,7 @@ static void verifyMethod( ClassFile *cf, method_info *m ) {
 
 	if ( verifyOpcode(itable, cf, m, ipos, retType) == -1 ) {
 	fprintf(stdout, "Verification Failed at instruction %d : %s\n", ipos, opcodes[m->code[ipos]].opcodeName);
-	// fail verification
+	exit(-1);
       }
       if (tracingExecution & TRACE_VERIFY) {
 	fprintf(stdout, "Post Instruction ");
