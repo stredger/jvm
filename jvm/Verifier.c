@@ -28,7 +28,9 @@ static void printTypeCodesArray( char **vstate, method_info *m, char *name ) {
 */
 
 static void printConstantPool(ClassFile *cf) {
-  char *cptypes[] = {"","Asciz","","","","","","class","","","Method","","NameAndType"};
+  char *cptypes[] = {"Unknown", "Asciz", "", "Integer", "Float",
+		     "Long", "Double", "Class", "String","Field",
+		     "Method", "Interface", "NameAndType"};
   int i;
   fprintf(stdout, "Constant Pool:\n");
   for (i = 1; i < cf->constant_pool_count; i++) {
@@ -195,14 +197,23 @@ static int checkStackUnderflow(int stksize, int toPop) {
 }
 
 
-static void updateInstruction(InstructionInfo *icurr, InstructionInfo *inext, int typeArrSize) {
-    if (inext->state) {
+static int checkInCPRange(int cprange, int ind) {
+  if (cprange < ind) {
+    fprintf(stdout, "Constant pool index out of range, max:%d, tried: %d\n", cprange - 1, ind);
+    return -1;
+  }
+  return 0;
+}
+
+
+static int updateInstruction(InstructionInfo *icurr, InstructionInfo *inext, int typeArrSize) {
+  if (inext->state) {
       // merge the states, stacks, and bears. Oh my!
-      mergeState(icurr, inext, typeArrSize);
-    } else {
-      // make a new instruction entry
-      dupInstructionInfo(icurr, inext, typeArrSize);
-    }
+      return mergeState(icurr, inext, typeArrSize);
+  }
+  // make a new instruction entry
+  dupInstructionInfo(icurr, inext, typeArrSize);
+  return 0;
 }
 
 
@@ -269,14 +280,16 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 
   case 0x00: // nop
     // just move to the next instruction
-    updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize);
+    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+      return -1;
     break;
 
   case 0x01: // aconst_null
     if ( checkStackOverflow(*stkSizePtr, 1, m->max_stack) == -1 )
       return -1; // verification failed
     stackbase[(*stkSizePtr)++] = "N"; // push N onto stack
-    updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize);
+    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+      return -1;
     break;
 
   case 0x02: // iconst_m1
@@ -289,7 +302,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     if ( checkStackOverflow(*stkSizePtr, 1, m->max_stack) == -1 )
       return -1;
     stackbase[(*stkSizePtr)++] = "I"; // push I onto stack
-    updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize);
+    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+      return -1;
     break;
     
   case 0x09: // lconst_0
@@ -298,7 +312,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
       return -1;  
     stackbase[(*stkSizePtr)++] = "l"; // push l onto stack
     stackbase[(*stkSizePtr)++] = "L"; // push L onto stack
-    updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize);
+    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+      return -1;
     break;
 
   case 0x0b: // fconst_0
@@ -307,7 +322,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     if ( checkStackOverflow(*stkSizePtr, 1, m->max_stack) == -1 )
       return -1;
     stackbase[(*stkSizePtr)++] = "F"; // push F onto stack
-    updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize);
+    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+      return -1;
     break;
 
   case 0x0e: // dconst_0
@@ -316,29 +332,95 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
       return -1;  
     stackbase[(*stkSizePtr)++] = "d"; // push d onto stack
     stackbase[(*stkSizePtr)++] = "D"; // push D onto stack
-    updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize);
+    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+      return -1;
     break;
 
-  case 0x14: // ldc2_w  TODO rest of the cases
-    varnum = (m->code[ipos+1] << 8) + m->code[ipos+2];	
-	switch(cf->cp_tag[varnum]) {
-		case 3: // CP_Integer
-			stackbase[(*stkSizePtr)++] = "I";
-			break;
-		case 4: // CP_Float
-			stackbase[(*stkSizePtr)++] = "F";
-			break;
-		case 5: // CP_Long
-			stackbase[(*stkSizePtr)++] = "l";
-		    stackbase[(*stkSizePtr)++] = "L"; 
-			break;
-		case 6: // CP_Double
-			stackbase[(*stkSizePtr)++] = "d";
-		    stackbase[(*stkSizePtr)++] = "D"; 
-			break;
-	}		
-	updateInstruction(&itable[ipos], &itable[ipos+3], typeArrSize);
-	break;
+  case 0x10: // bipush
+    varnum = m->code[ipos+1];
+    if ( checkStackOverflow(*stkSizePtr, 1, m->max_stack) == -1 )
+      return -1;
+    stackbase[(*stkSizePtr)++] = "I";
+    if ( updateInstruction(&itable[ipos], &itable[ipos+2], typeArrSize) == -1 )
+      return -1;
+    break;
+
+  case 0x11: // sipush
+    varnum = (m->code[ipos+1] << 8) & m->code[ipos+2];
+    if ( checkStackOverflow(*stkSizePtr, 1, m->max_stack) == -1 )
+      return -1;
+    stackbase[(*stkSizePtr)++] = "I";
+    if ( updateInstruction(&itable[ipos], &itable[ipos+3], typeArrSize) == -1 )
+      return -1;
+    break;
+
+
+  case 0x12: // ldc
+    varnum = m->code[ipos+1];
+    if ( checkInCPRange(cf->constant_pool_count, varnum) == -1 ||
+	 checkStackOverflow(*stkSizePtr, 1, m->max_stack) == -1 )
+      return -1;
+    switch (cf->cp_tag[varnum]) {
+    case 3: // int
+      stackbase[(*stkSizePtr)++] = "I";
+      break;
+    case 4: // float
+      stackbase[(*stkSizePtr)++] = "F";
+      break;
+    case 8: // string
+      stackbase[(*stkSizePtr)++] = "ALjava/lang/String";
+      break;
+    default:
+      fprintf(stdout, "Trying to load incorrect constant type, tried: %d, expected 3, 4, 8\n", cf->cp_tag[varnum]);
+      return -1;
+    }
+    if ( updateInstruction(&itable[ipos], &itable[ipos+2], typeArrSize) == -1 )
+      return -1;
+    break;
+
+  case 0x13: // ldc_w
+    varnum = (m->code[ipos+1] << 8) & m->code[ipos+2];
+    if ( checkInCPRange(cf->constant_pool_count, varnum) == -1 ||
+	 checkStackOverflow(*stkSizePtr, 1, m->max_stack) == -1 )
+      return -1;
+    switch (cf->cp_tag[varnum]) {
+    case 3: // int
+      stackbase[(*stkSizePtr)++] = "I";
+      break;
+    case 4: // float
+      stackbase[(*stkSizePtr)++] = "F";
+      break;
+    case 8: // string
+      stackbase[(*stkSizePtr)++] = "ALjava/lang/String";
+      break;
+    default:
+      fprintf(stdout, "Trying to load incorrect constant type, tried: %d, expected 3, 4, 8\n", cf->cp_tag[varnum]);
+      return -1;
+    }
+    if ( updateInstruction(&itable[ipos], &itable[ipos+3], typeArrSize) == -1 )
+      return -1;
+    break;
+
+  case 0x14: // ldc2_w
+    varnum = (m->code[ipos+1] << 8) & m->code[ipos+2];
+    if ( checkInCPRange(cf->constant_pool_count, varnum) == -1 ||
+	 checkStackOverflow(*stkSizePtr, 2, m->max_stack) == -1 )
+      return -1;
+    switch(cf->cp_tag[varnum]) {
+    case 5: // CP_Long
+      stackbase[(*stkSizePtr)++] = "l";
+      stackbase[(*stkSizePtr)++] = "L"; 
+      break;
+    case 6: // CP_Double
+      stackbase[(*stkSizePtr)++] = "d";
+      stackbase[(*stkSizePtr)++] = "D"; 
+      break;
+    default:
+      fprintf(stdout, "Trying to load incorrect constant type, tried: %d, expected 5, 6\n", cf->cp_tag[varnum]);
+      return -1;
+    }		
+    updateInstruction(&itable[ipos], &itable[ipos+3], typeArrSize);
+    break;
 	
   case 0x15: // iload
     varnum = m->code[ipos+1];
@@ -348,7 +430,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
       return -1;
     stackbase[(*stkSizePtr)++] = "I"; // push I onto stack
     // the next instruction is the current instruction position plus two
-    updateInstruction(&itable[ipos], &itable[ipos+2], typeArrSize);
+    if ( updateInstruction(&itable[ipos], &itable[ipos+2], typeArrSize) == -1 )
+      return -1;
     break;
     
   case 0x16: // lload
@@ -360,7 +443,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     stackbase[(*stkSizePtr)++] = "l";
     stackbase[(*stkSizePtr)++] = "L";
     // the next instruction is the current instruction position plus two (plus 1 is the inline!)
-    updateInstruction(&itable[ipos], &itable[ipos+2], typeArrSize);
+    if ( updateInstruction(&itable[ipos], &itable[ipos+2], typeArrSize) == -1 )
+      return -1;
     break;
 
   case 0x17: // fload
@@ -371,7 +455,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
       return -1;
     stackbase[(*stkSizePtr)++] = "F";
     // the next instruction is the current instruction position plus two
-    updateInstruction(&itable[ipos], &itable[ipos+2], typeArrSize);
+    if ( updateInstruction(&itable[ipos], &itable[ipos+2], typeArrSize) == -1 )
+      return -1;
     break;
 
   case 0x18: // dload
@@ -383,7 +468,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     stackbase[(*stkSizePtr)++] = "d";
     stackbase[(*stkSizePtr)++] = "D";
     // the next instruction is the current instruction position plus two
-    updateInstruction(&itable[ipos], &itable[ipos+2], typeArrSize);
+    if ( updateInstruction(&itable[ipos], &itable[ipos+2], typeArrSize) == -1 )
+      return -1;
     break;
 
   case 0x19: // aload
@@ -393,7 +479,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 	 compareReferenceTypes(localsbase[varnum], "A") == -1 )
       return -1;
     stackbase[(*stkSizePtr)++] = localsbase[varnum];
-    updateInstruction(&itable[ipos], &itable[ipos+2], typeArrSize);
+    if ( updateInstruction(&itable[ipos], &itable[ipos+2], typeArrSize) == -1 )
+      return -1;
     break;
   
   case 0x1a: // iload_0
@@ -406,7 +493,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 	 compareSimpleTypes(localsbase[varnum], "I") == -1 )
       return -1;
     stackbase[(*stkSizePtr)++] = "I";
-    updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize);
+    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+      return -1;
     break;
 
   case 0x1e: // lload_0
@@ -420,7 +508,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
       return -1;
     stackbase[(*stkSizePtr)++] = "l";
     stackbase[(*stkSizePtr)++] = "L";
-    updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize);
+    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+      return -1;
     break;
 
   case 0x22: // fload_0
@@ -433,7 +522,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 	 compareSimpleTypes(localsbase[varnum], "F") == -1 )
       return -1;
     stackbase[(*stkSizePtr)++] = "F";
-    updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize);
+    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+      return -1;
     break;
 
   case 0x26: // lload_0
@@ -447,7 +537,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
       return -1;
     stackbase[(*stkSizePtr)++] = "d";
     stackbase[(*stkSizePtr)++] = "D";
-    updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize);
+    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+      return -1;
     break;
 
   case 0x2a: // aload_0
@@ -460,7 +551,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 	 compareReferenceTypes(localsbase[varnum], "A") == -1 )
       return -1;
     stackbase[(*stkSizePtr)++] = localsbase[varnum];
-    updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize);
+    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+      return -1;
     break;
 
   case 0x2e: // iaload
@@ -473,7 +565,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 	 compareSimpleTypes(stackbase[*stkSizePtr - 2], "I") == -1 )
 	 return -1;
     stackbase[--(*stkSizePtr)] = "-"; // pop the A, keep the I and we are golden
-    updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize);
+    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+      return -1;
     break;
 
   case 0x2f: // laload
@@ -483,7 +576,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 	 return -1;
     stackbase[*stkSizePtr - 1] = "L";
     stackbase[*stkSizePtr - 2] = "l";
-    updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize);
+    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+      return -1;
     break;
 
   case 0x30: // faload
@@ -493,7 +587,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 	 return -1;
     stackbase[--(*stkSizePtr)] = "-";
     stackbase[*stkSizePtr - 1] = "F";
-    updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize);
+    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+      return -1;
     break;
 
   case 0x31: // daload
@@ -503,7 +598,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 	 return -1;
     stackbase[*stkSizePtr - 1] = "D";
     stackbase[*stkSizePtr - 2] = "d";
-    updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize);
+    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+      return -1;
     break;
 
   case 0x32: // aaload
@@ -514,7 +610,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     // chop the A[ off the type, should really do a strdup here.. and everywhere actually
     stackbase[*stkSizePtr - 2] = &stackbase[*stkSizePtr - 1][2];
     stackbase[--(*stkSizePtr)] = "-";
-    updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize);
+    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+      return -1;
     break;
 
   case 0x36: // istore
@@ -526,7 +623,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     stackbase[--(*stkSizePtr)] = "-"; // basically pop the I
     localsbase[varnum] = "I";
     // next instruction is at ipos + 2
-    updateInstruction(&itable[ipos], &itable[ipos+2], typeArrSize);
+    if ( updateInstruction(&itable[ipos], &itable[ipos+2], typeArrSize) == -1 )
+      return -1;
     break;
 
   case 0x37: // lstore
@@ -540,7 +638,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     stackbase[--(*stkSizePtr)] = "-"; // and l
     localsbase[varnum] = "Ll";
     // next instruction is at ipos + 2
-    updateInstruction(&itable[ipos], &itable[ipos+2], typeArrSize);
+    if ( updateInstruction(&itable[ipos], &itable[ipos+2], typeArrSize) == -1 )
+      return -1;
     break;
 
  case 0x38: // fstore
@@ -551,7 +650,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
       return -1;
     stackbase[--(*stkSizePtr)] = "-"; // pop the F
     localsbase[varnum] = "F";
-    updateInstruction(&itable[ipos], &itable[ipos+2], typeArrSize);
+    if ( updateInstruction(&itable[ipos], &itable[ipos+2], typeArrSize) == -1 )
+      return -1;
     break;
 
   case 0x39: // dstore
@@ -564,7 +664,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     stackbase[--(*stkSizePtr)] = "-"; // pop the D
     stackbase[--(*stkSizePtr)] = "-"; // pop the d
     localsbase[varnum] = "Dd";
-    updateInstruction(&itable[ipos], &itable[ipos+2], typeArrSize);
+    if ( updateInstruction(&itable[ipos], &itable[ipos+2], typeArrSize) == -1 )
+      return -1;
     break;
 
  case 0x3a: // astore
@@ -575,7 +676,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
       return -1;
     localsbase[varnum] = stackbase[*stkSizePtr - 1];
     stackbase[--(*stkSizePtr)] = "-"; // pop the A..
-    updateInstruction(&itable[ipos], &itable[ipos+2], typeArrSize);
+    if ( updateInstruction(&itable[ipos], &itable[ipos+2], typeArrSize) == -1 )
+      return -1;
     break;
 
   case 0x3b: // istore_0
@@ -589,7 +691,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
       return -1;
     stackbase[--(*stkSizePtr)] = "-"; // pop the I
     localsbase[varnum] = "I"; // just smash over whatever was here before
-    updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize);
+    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+      return -1;
     break;
 
   case 0x3f: // lstore_0
@@ -604,7 +707,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     stackbase[--(*stkSizePtr)] = "-"; // pop the L
     stackbase[--(*stkSizePtr)] = "-"; // pop the l
     localsbase[varnum] = "Ll";
-    updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize);
+    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+      return -1;
     break;
 
   case 0x43: // fstore_0
@@ -617,7 +721,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
       return -1;
     stackbase[--(*stkSizePtr)] = "-";
     localsbase[varnum] = "F";
-    updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize);
+    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+      return -1;
     break;
 
   case 0x47: // dstore_0
@@ -632,7 +737,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     stackbase[--(*stkSizePtr)] = "-"; // pop the D
     stackbase[--(*stkSizePtr)] = "-"; // pop the d
     localsbase[varnum] = "Dd";
-    updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize);
+    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+      return -1;
     break;
 
   case 0x4b: // astore_0
@@ -646,7 +752,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     // could be 1 line if we had a pop fn yo!
     localsbase[varnum] = stackbase[*stkSizePtr - 1];
     stackbase[--(*stkSizePtr)] = "-";
-    updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize);
+    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+      return -1;
     break;
 
   case 0x4f: // iastore
@@ -661,7 +768,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     stackbase[--(*stkSizePtr)] = "-";
     stackbase[--(*stkSizePtr)] = "-";
     stackbase[--(*stkSizePtr)] = "-";
-    updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize);
+    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+      return -1;
     break;
 
   case 0x50: // lastore
@@ -675,7 +783,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     stackbase[--(*stkSizePtr)] = "-";
     stackbase[--(*stkSizePtr)] = "-";
     stackbase[--(*stkSizePtr)] = "-";
-    updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize);
+    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+      return -1;
     break;
 
   case 0x51: // fastore
@@ -687,7 +796,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     stackbase[--(*stkSizePtr)] = "-";
     stackbase[--(*stkSizePtr)] = "-";
     stackbase[--(*stkSizePtr)] = "-";
-    updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize);
+    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+      return -1;
     break;
 
   case 0x52: // dastore
@@ -701,7 +811,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     stackbase[--(*stkSizePtr)] = "-";
     stackbase[--(*stkSizePtr)] = "-";
     stackbase[--(*stkSizePtr)] = "-";
-    updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize);
+    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+      return -1;
     break;
 
     /*
@@ -715,7 +826,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     stackbase[--(*stkSizePtr)] = "-";
     stackbase[--(*stkSizePtr)] = "-";
     stackbase[--(*stkSizePtr)] = "-";
-    updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize);
+    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+      return -1;
     break;
     */
 
@@ -723,7 +835,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     if ( checkStackUnderflow(*stkSizePtr, 1) == -1 )
       return -1;
     stackbase[--(*stkSizePtr)] = "-"; // pop the val
-    updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize);
+    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+      return -1;
     break;
 
   case 0x58: // pop2
@@ -731,7 +844,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
       return -1;
     stackbase[--(*stkSizePtr)] = "-"; // pop the first val
     stackbase[--(*stkSizePtr)] = "-"; // and the second
-    updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize);
+    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+      return -1;
     break;
 
   case 0x59: // dup
@@ -741,7 +855,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
       return -1;
     varnum = (*stkSizePtr)++; // dont want to screw up the incrementing so just do it here
     stackbase[varnum] = stackbase[varnum - 1];
-    updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize);
+    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+      return -1;
     break;
 
   case 0x5a: // dup_x1
@@ -751,7 +866,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
       return -1;
     varnum = (*stkSizePtr)++; // dont want to screw up the incrementing so just do it here
     stackbase[varnum] = stackbase[varnum - 2];
-    updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize);
+    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+      return -1;
     break;
 
   case 0x5b: // dup_x2
@@ -761,7 +877,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
       return -1;
     varnum = (*stkSizePtr)++; // dont want to screw up the incrementing so just do it here
     stackbase[varnum] = stackbase[varnum - 3];
-    updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize);
+    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+      return -1;
     break;
 
   case 0x5c: // dup2
@@ -773,7 +890,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     stackbase[varnum] = stackbase[varnum - 2];
     varnum = (*stkSizePtr)++; // and repeat for the second val
     stackbase[varnum] = stackbase[varnum - 2];
-    updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize);
+    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+      return -1;
     break;
 
   case 0x5d: // dup2_x1
@@ -785,7 +903,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     stackbase[varnum] = stackbase[varnum - 3];
     varnum = (*stkSizePtr)++; // and repeat for the second val
     stackbase[varnum] = stackbase[varnum - 3];
-    updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize);
+    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+      return -1;
     break;
 
   case 0x5e: // dup2_x2
@@ -797,7 +916,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     stackbase[varnum] = stackbase[varnum - 4];
     varnum = (*stkSizePtr)++; // and repeat for the second val
     stackbase[varnum] = stackbase[varnum - 4];
-    updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize);
+    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+      return -1;
     break;
 
   case 0x5f: // swap
@@ -808,7 +928,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     tmpStr = stackbase[varnum];
     stackbase[varnum] = stackbase[varnum - 1];
     stackbase[varnum - 1] = tmpStr;
-    updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize);
+    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+      return -1;
     break;
 
   case 0x60: // iadd
@@ -828,7 +949,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 	 compareSimpleTypes(stackbase[*stkSizePtr - 2], "I") == -1 )
       return -1;
     stackbase[--(*stkSizePtr)] = "-"; // just pop an I (pop 2, push 1)
-    updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize);
+    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+      return -1;
     break;
     
   case 0x61: // ladd
@@ -851,7 +973,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
       return -1;
     stackbase[--(*stkSizePtr)] = "-"; // just pop an L
     stackbase[--(*stkSizePtr)] = "-"; // and the l
-    updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize);
+    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+      return -1;
     break;   
 
   case 0x62: // fadd
@@ -865,7 +988,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 	 compareSimpleTypes(stackbase[*stkSizePtr - 2], "F") == -1 )
       return -1;
     stackbase[--(*stkSizePtr)] = "-";
-    updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize);
+    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+      return -1;
     break;
 
   case 0x63: // dadd
@@ -882,7 +1006,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
       return -1;
     stackbase[--(*stkSizePtr)] = "-";
     stackbase[--(*stkSizePtr)] = "-";
-    updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize);
+    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+      return -1;
     break;   
 
   case 0x74: // ineg
@@ -892,7 +1017,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     if ( checkStackUnderflow(*stkSizePtr, 1) == -1 || 
 	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "I") == -1 )
       return -1;
-    updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize);
+    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+      return -1;
     break;
 
   case 0x75: // lneg
@@ -900,14 +1026,16 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "L") == -1 ||
 	 compareSimpleTypes(stackbase[*stkSizePtr - 2], "l") == -1 )
       return -1;
-    updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize);
+    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+      return -1;
     break;
 
   case 0x76: // fneg
     if ( checkStackUnderflow(*stkSizePtr, 1) == -1 ||
 	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "F") == -1 )
       return -1;
-    updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize);
+    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+      return -1;
     break;
 
   case 0x77: // dneg
@@ -915,7 +1043,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "D") == -1 ||
 	 compareSimpleTypes(stackbase[*stkSizePtr - 2], "d") == -1 )
       return -1;
-    updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize);
+    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+      return -1;
     break;
 
   case 0x84: // iinc
@@ -933,7 +1062,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
       return -1;
     stackbase[(*stkSizePtr) - 1] = "l"; // overwrite the old stack ele
     stackbase[(*stkSizePtr)++] = "L"; // and add a new one
-    updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize);
+    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+      return -1;
     break;
 
   case 0x86: // i2f
@@ -941,7 +1071,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 	 compareSimpleTypes(stackbase[(*stkSizePtr) - 1], "I") == -1 )
       return -1;
     stackbase[(*stkSizePtr) - 1] = "F"; // just overwrite the old ele
-    updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize);
+    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+      return -1;
     break;
 
   case 0x87: // i2d
@@ -951,7 +1082,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
       return -1;
     stackbase[(*stkSizePtr) - 1] = "d";
     stackbase[(*stkSizePtr)++] = "D";
-    updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize);
+    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+      return -1;
     break;
 
   case 0x88: // l2i
@@ -983,7 +1115,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 	 compareSimpleTypes(stackbase[(*stkSizePtr) - 1], "F") == -1 )
       return -1;
     stackbase[(*stkSizePtr) - 1] = "I"; // just overwrite the old ele
-    updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize);
+    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+      return -1;
     break;
 
   case 0x8c: // f2l
@@ -993,7 +1126,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
       return -1;
     stackbase[(*stkSizePtr) - 1] = "l"; // overwrite the old stack ele
     stackbase[(*stkSizePtr)++] = "L"; // and add a new one
-    updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize);
+    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+      return -1;
     break;
 
   case 0x8d: // f2d
@@ -1003,7 +1137,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
       return -1;
     stackbase[(*stkSizePtr) - 1] = "d"; // overwrite the old stack ele
     stackbase[(*stkSizePtr)++] = "D"; // and add a new one
-    updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize);
+    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+      return -1;
     break;
 
   case 0x8e: // d2i
@@ -1013,7 +1148,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
       return -1;
     stackbase[--(*stkSizePtr)] = "-"; // pop the D
     stackbase[(*stkSizePtr) - 1] = "I"; // change the d to an I
-    updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize);
+    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+      return -1;
     break;
 
   case 0x8f: // d2l
@@ -1023,7 +1159,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
       return -1;
     stackbase[(*stkSizePtr) - 1] = "L"; // change D to L
     stackbase[(*stkSizePtr) - 2] = "l"; // and d to l
-    updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize);
+    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+      return -1;
     break;
 
   case 0x90: // d2f
@@ -1033,7 +1170,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
       return -1;
     stackbase[--(*stkSizePtr)] = "-"; // pop the L
     stackbase[(*stkSizePtr) - 1] = "F"; // change the l to an F
-    updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize);
+    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+      return -1;
     break;
 
   case 0x94: // lcmp
@@ -1047,7 +1185,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     stackbase[--(*stkSizePtr)] = "-"; // l
     stackbase[--(*stkSizePtr)] = "-"; // L
     stackbase[(*stkSizePtr) - 1] = "I"; // convert the l to an I
-    updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize);
+    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+      return -1;
     break;
 
   case 0x95: // fcmpl
@@ -1058,7 +1197,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
       return -1;
     stackbase[--(*stkSizePtr)] = "-"; // pop 
     stackbase[(*stkSizePtr) - 1] = "I"; // convert the F to an I
-    updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize);
+    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+      return -1;
     break;
 
   case 0x97: // dcmpl
@@ -1073,7 +1213,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     stackbase[--(*stkSizePtr)] = "-";
     stackbase[--(*stkSizePtr)] = "-";
     stackbase[(*stkSizePtr) - 1] = "I";
-    updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize);
+    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+      return -1;
     break;
 
   case 0x99: // ifeq
@@ -1089,8 +1230,9 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
       return -1;
     stackbase[--(*stkSizePtr)] = "-";
     // uprade branch point and next instruction
-    updateInstruction(&itable[ipos], &itable[varnum], typeArrSize);
-    updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize);
+    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[varnum], typeArrSize) == -1 )
+      return -1;
     break;
 
   case 0x9f: // if_icmpeq  
@@ -1108,8 +1250,9 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     stackbase[--(*stkSizePtr)] = "-";
     stackbase[--(*stkSizePtr)] = "-";
     // uprade branch point and next instruction
-    updateInstruction(&itable[ipos], &itable[varnum], typeArrSize);
-    updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize);
+    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 || 
+	 updateInstruction(&itable[ipos], &itable[varnum], typeArrSize) == -1 )
+      return -1;
     break;
 
   case 0xa5: // if_acmpeq
@@ -1122,15 +1265,16 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
       return -1;
     stackbase[--(*stkSizePtr)] = "-";
     stackbase[--(*stkSizePtr)] = "-";
-    updateInstruction(&itable[ipos], &itable[varnum], typeArrSize);
-    updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize);
+    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[varnum], typeArrSize) == -1 )
+      return -1;
     break;
 
   case 0xa7: // goto
     varnum = (m->code[ipos+1] << 8) & m->code[ipos+2];
-    if ( checkJumpPosition(varnum, itable, m->code_length) == -1 )
+    if ( checkJumpPosition(varnum, itable, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[varnum], typeArrSize) == -1 )
       return -1;
-    updateInstruction(&itable[ipos], &itable[varnum], typeArrSize);
     break;
 
   case 0xac: // ireturn
@@ -1199,7 +1343,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     default:
       return -1;
     }
-    updateInstruction(&itable[ipos], &itable[ipos+2], typeArrSize);
+    if ( updateInstruction(&itable[ipos], &itable[ipos+2], typeArrSize) == -1 )
+      return -1;
     break;
 
 
@@ -1208,7 +1353,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 	 compareReferenceTypes(stackbase[*stkSizePtr - 1], "A[") == -1 )
       return -1;
     stackbase[*stkSizePtr - 1] = "I";
-    updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize);
+    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+      return -1;
     break;
 
   case 0xb4: // getfield
@@ -1278,14 +1424,15 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 
 	
   case 0xbb: // new
-	varnum = (m->code[ipos+1] << 8) + m->code[ipos+2];
-	if ( checkStackOverflow(*stkSizePtr, 1, m->max_stack) == -1 )
+    varnum = (m->code[ipos+1] << 8) + m->code[ipos+2];
+    if ( checkStackOverflow(*stkSizePtr, 1, m->max_stack) == -1 )
       return -1; // verification failed
     tmpStr = GetCPItemAsString(cf, varnum);
     stackbase[(*stkSizePtr)++] = SafeStrcat("A", tmpStr);
-	SafeFree(tmpStr);
-    updateInstruction(&itable[ipos], &itable[ipos+3], typeArrSize);
-	break;
+    SafeFree(tmpStr);
+    if ( updateInstruction(&itable[ipos], &itable[ipos+3], typeArrSize) == -1 )
+      return -1;
+    break;
   
   case 0xc6: // ifnull
   case 0xc7: // ifnonnull
@@ -1295,8 +1442,9 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 	 checkJumpPosition(varnum, itable, m->code_length) == -1 )
       return -1;
     stackbase[--(*stkSizePtr)] = "-";
-    updateInstruction(&itable[ipos], &itable[varnum], typeArrSize);
-    updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize);
+    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[varnum], typeArrSize) == -1 )
+      return -1;
     break;
 
 
