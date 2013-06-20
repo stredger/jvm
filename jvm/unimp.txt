@@ -12,8 +12,10 @@ fix dups
 aastore???
 
 
-could do
+http://docs.oracle.com/javase/specs/jvms/se7/html/jvms-6.html#jvms-6.5.checkcast
 
+
+could do
 
 
 { 0Xaa, "tableswitch",  "4+", "I>" },   /* continue execution from an address in the table at offset index */

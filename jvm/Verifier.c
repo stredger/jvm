@@ -1554,9 +1554,19 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
       return -1;   
     stackbase[--(*stkSizePtr)] = "-"; // Pop "A"
     if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+
       return -1;
     break;
-    
+
+  case 0xc4: // wide
+    // unimplemented
+    fprintf(stdout, "Opcode: %d wide unimplemented!\n", op);
+    varnum = ipos;
+    if (m->code[ipos+1] == 0x84)
+      varnum += 2; // move 5 if iinc
+    varnum += 3; // 3 otherwise... which is incorrect for some cases but whatever
+    if ( updateInstruction(&itable[ipos], &itable[varnum], typeArrSize) == -1 )
+      
   case 0xc5: // multianewarray
     varnum = (m->code[ipos+1] << 8) + m->code[ipos+2];
     tmpArgsSize = m->code[ipos+3];
@@ -1578,6 +1588,14 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 ||
 	 updateInstruction(&itable[ipos], &itable[varnum], typeArrSize) == -1 )
       return -1;
+    break;
+
+  case 0xc8: // goto_w
+    varnum = (m->code[ipos+1] << 24) + (m->code[ipos+2] << 16) +
+      (m->code[ipos+3] << 8) + m->code[ipos+4];
+    if ( checkJumpPosition(varnum, itable, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[varnum], typeArrSize) == -1 )
+      return -1;    
     break;
 
   case 0xc9: // jsr_w
