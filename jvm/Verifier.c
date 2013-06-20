@@ -296,7 +296,6 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
   switch (op) {
 
   case 0x00: // nop
-  case 0xa8: // jsr
     // just move to the next instruction
     if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
       return -1;
@@ -1293,6 +1292,12 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
       return -1;
     break;
 
+  case 0xa8: // jsr
+    // treat like nop but ignore 2 inline vals
+    if ( updateInstruction(&itable[ipos], &itable[ipos+3], typeArrSize) == -1 )
+      return -1;
+    break;
+
   case 0xa9: // ret
     // literally don't do anything
     break;
@@ -1531,6 +1536,14 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 	 updateInstruction(&itable[ipos], &itable[varnum], typeArrSize) == -1 )
       return -1;
     break;
+
+  case 0xc9: // jsr_w
+    // treat like nop but ignore 4 inline vals
+    if ( updateInstruction(&itable[ipos], &itable[ipos+5], typeArrSize) == -1 )
+      return -1;
+    break;
+
+
 
   default:
     fprintf(stdout, "Verification for opcode %d %s not implemented!\n", op, opcodes[op].opcodeName);
