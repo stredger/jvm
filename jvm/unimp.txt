@@ -11,29 +11,14 @@ update instruction should check if last instruction for "falling off end"
 fix dups
 aastore???
 
-
-
-should do
-
-{ 0Xc0, "checkcast",    "ii", "A>A" },  /* check whether an objectref is of a certain type, the class reference of which is in the constant pool at index (i1 << 8 + i2) */
-
-{ 0Xc1, "instanceof",   "ii", "A>I" },  /* determine if an object objectref is of a given type, identified by class reference index in constant pool (i1 << 8 + i2) */
-
-
-
+http://docs.oracle.com/javase/specs/jvms/se7/html/jvms-6.html#jvms-6.5.checkcast
 
 could do
-
 
 
 { 0Xaa, "tableswitch",  "4+", "I>" },   /* continue execution from an address in the table at offset index */
 { 0Xab, "lookupswitch", "4+", "I>" },   /* a target address is looked up from a table using a key and execution continues from the instruction at that address */
 
 { 0Xbf, "athrow",       "", "A>" },     /* throw an error or exception (notice that the rest of the stack is cleared, leaving only a reference to the Throwable) */
-
-{ 0Xc2, "monitorenter", "", "A>" },     /* enter monitor for object ("grab the lock" - start of synchronized() section) */
-{ 0Xc3, "monitorexit",  "", "A>" },     /* exit monitor for object ("release the lock" - end of synchronized() section) */
-
-{ 0Xc4, "wide",         "3+", "" },     /* execute opcode, where opcode is either iload, fload, aload, lload, dload, istore, fstore, astore, lstore, dstore, or ret, but assume the index is 16 bit; or execute iinc, where the index is 16 bits and the constant to increment by is a signed 16 bit short */
 
 { 0Xc5, "multianewarray", "iii", "I*>A" }, /* create a new array of i3 dimensions with elements of type identified by class reference in constant pool index (i1 << 8 + i2); the sizes of each dimension is identified by count1, [count2, etc.] */
