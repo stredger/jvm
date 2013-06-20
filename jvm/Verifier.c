@@ -1524,6 +1524,16 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
       return -1;
     break;
     
+  case 0xc0: // checkcast
+    varnum = (m->code[ipos+1] << 8) + m->code[ipos+2];    
+    if ( checkStackUnderflow(*stkSizePtr, 1) == -1 ||
+     checkInCPRange(cf->constant_pool_count, varnum) == -1 ||
+     compareReferenceTypes(stackbase[*stkSizePtr - 1], "A") == -1 )
+      return -1;   
+    if ( updateInstruction(&itable[ipos], &itable[ipos+3], typeArrSize) == -1 )
+      return -1;
+    break;  
+    
   case 0xc1: // instanceof
     varnum = (m->code[ipos+1] << 8) + m->code[ipos+2];    
     if ( checkStackUnderflow(*stkSizePtr, 1) == -1 ||
@@ -1534,6 +1544,16 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     stackbase[--(*stkSizePtr)] = "-"; // Pop "A"
     stackbase[(*stkSizePtr)++] = "I"; // Push "I"
     if ( updateInstruction(&itable[ipos], &itable[ipos+3], typeArrSize) == -1 )
+      return -1;
+    break;
+    
+  case 0xc2: // monitorenter
+  case 0xc3: // monitorexit
+    if ( checkStackUnderflow(*stkSizePtr, 1) == -1 ||
+     compareReferenceTypes(stackbase[*stkSizePtr - 1], "A") == -1)
+      return -1;   
+    stackbase[--(*stkSizePtr)] = "-"; // Pop "A"
+    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
       return -1;
     break;
 
