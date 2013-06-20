@@ -1366,11 +1366,38 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
       return -1;
     break;
 
-  /*case 0xb4: // getfield
+  case 0xb4: // getfield
     varnum = (m->code[ipos+1] << 8) + m->code[ipos+2];
-    printf("JOSH TEST: %s\n", GetCPItemAsString(cf, varnum));
+    tmpStr = SafeStrdup(strchr(GetCPItemAsString(cf, varnum), ':') + 1);
+	// Pop address off stack
+	stackbase[--(*stkSizePtr)] = "-";
+	// Push field value on stack
+	if(strcmp(tmpStr, "Dd") == 0) {
+	  stackbase[(*stkSizePtr)++] = "d";
+	  stackbase[(*stkSizePtr)++] = "D";
+	}
+	else if(strcmp(tmpStr, "Ll") == 0) {
+	  stackbase[(*stkSizePtr)++] = "l";
+	  stackbase[(*stkSizePtr)++] = "L";
+	}
+	else
+      stackbase[(*stkSizePtr)++] = SafeStrdup(tmpStr);
+	SafeFree(tmpStr);
+	updateInstruction(&itable[ipos], &itable[ipos+3], typeArrSize);
+	break;
 
-	break;*/
+  case 0xb5: // putfield
+    varnum = (m->code[ipos+1] << 8) + m->code[ipos+2];
+	tmpStr = SafeStrdup(strchr(GetCPItemAsString(cf, varnum), ':') + 1);
+	// Pop address off stack
+	stackbase[--(*stkSizePtr)] = "-";
+	// Pop arguments off the stack (pop two spots if Dd or Ll)
+	if(strcmp(tmpStr, "Dd") == 0 || strcmp(tmpStr, "Ll") == 0)
+      stackbase[--(*stkSizePtr)] = "-";
+    stackbase[--(*stkSizePtr)] = "-";
+	SafeFree(tmpStr);
+	updateInstruction(&itable[ipos], &itable[ipos+3], typeArrSize);
+	break;
 	
   case 0xb6: // invokevirtual
   case 0xb7: // invokespecial
