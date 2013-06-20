@@ -8,8 +8,9 @@ Huge num of string mem leaks
 push / pop functions
 add verification and vbit to see if all inline instructions present n' shit
 update instruction should check if last instruction for "falling off end"
-update instruction should be a check
 fix dups
+
+
 
 close
 
@@ -20,8 +21,7 @@ close
 
 should do
 
-{ 0X10, "bipush",       "v", ">I"},     /* push a byte onto the stack as an integer value */
-{ 0X11, "sipush",       "vv", ">I" },   /* push a short onto the stack */
+
 { 0X12, "ldc",          "i", ">X" },    /* push a constant #index from a constant pool (String, int or float) onto the stack */
 { 0X13, "ldc_w",        "ii", ">X" },   /* push a constant #index from a constant pool (String, int or float) onto the stack (wide index is constructed as i1 << 8 + i2) */
 { 0X14, "ldc2_w",       "ii", ">X" },   /* push a constant #index from a constant pool (double or long) onto the stack (wide index is constructed as i1 << 8 + i2) */
