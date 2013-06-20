@@ -364,7 +364,7 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     break;
 
   case 0x11: // sipush
-    varnum = (m->code[ipos+1] << 8) & m->code[ipos+2];
+    varnum = (m->code[ipos+1] << 8) + m->code[ipos+2];
     if ( checkStackOverflow(*stkSizePtr, 1, m->max_stack) == -1 )
       return -1;
     stackbase[(*stkSizePtr)++] = "I";
@@ -397,7 +397,7 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     break;
 
   case 0x13: // ldc_w
-    varnum = (m->code[ipos+1] << 8) & m->code[ipos+2];
+    varnum = (m->code[ipos+1] << 8) + m->code[ipos+2];
     if ( checkInCPRange(cf->constant_pool_count, varnum) == -1 ||
 	 checkStackOverflow(*stkSizePtr, 1, m->max_stack) == -1 )
       return -1;
@@ -420,7 +420,7 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     break;
 
   case 0x14: // ldc2_w
-    varnum = (m->code[ipos+1] << 8) & m->code[ipos+2];
+    varnum = (m->code[ipos+1] << 8) + m->code[ipos+2];
     if ( checkInCPRange(cf->constant_pool_count, varnum) == -1 ||
 	 checkStackOverflow(*stkSizePtr, 2, m->max_stack) == -1 )
       return -1;
@@ -1289,7 +1289,7 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     break;
 
   case 0xa7: // goto
-    varnum = (m->code[ipos+1] << 8) & m->code[ipos+2];
+    varnum = (m->code[ipos+1] << 8) + m->code[ipos+2];
     if ( checkJumpPosition(varnum, itable, m->code_length) == -1 ||
 	 updateInstruction(&itable[ipos], &itable[varnum], typeArrSize) == -1 )
       return -1;
@@ -1367,7 +1367,6 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 	 compareReferenceTypes(stackbase[*stkSizePtr - 1], "A") == -1 ||
 	 checkValidConstantType(cf->cp_tag[varnum]) == -1 ) 
       return -1;
-   
     tmpStr = SafeStrdup(strchr(GetCPItemAsString(cf, varnum), ':') + 1);
     // Pop address off stack
     stackbase[--(*stkSizePtr)] = "-";
@@ -1388,7 +1387,6 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
   case 0xb3: // putstatic
   case 0xb5: // putfield
     varnum = (m->code[ipos+1] << 8) + m->code[ipos+2];
-    // Get type
     tmpStr = SafeStrdup(strchr(GetCPItemAsString(cf, varnum), ':') + 1);
     // Pop arguments off the stack (pop two spots if Dd or Ll)
     if(strcmp(tmpStr, "D") == 0 ) { // double
@@ -1493,6 +1491,18 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
       return -1;
     }
     if ( updateInstruction(&itable[ipos], &itable[ipos+2], typeArrSize) == -1 )
+      return -1;
+    break;
+
+  case 0xbd: // anewarray
+    varnum = (m->code[ipos+1] << 8) + m->code[ipos+2];
+    if ( checkStackUnderflow(*stkSizePtr, 1) == -1 ||
+	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "I") == -1 )
+      return -1;
+    tmpStr = GetCPItemAsString(cf, varnum);
+    stackbase[*stkSizePtr - 1] = SafeStrcat("A[", tmpStr);
+    SafeFree(tmpStr);
+    if ( updateInstruction(&itable[ipos], &itable[ipos+3], typeArrSize) == -1 )
       return -1;
     break;
 
