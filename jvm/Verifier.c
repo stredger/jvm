@@ -296,7 +296,7 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
   switch (op) {
 
   case 0x00: // nop
-    //  case 0xb9: // invokeinterface
+  case 0xa8: // jsr
     // just move to the next instruction
     if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
       return -1;
@@ -833,13 +833,12 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
       return -1;
     break;
 
-    /*
   case 0x53: // aastore
     if ( checkStackUnderflow(*stkSizePtr, 3) == -1 ||
 	 compareReferenceTypes(stackbase[*stkSizePtr - 1], "A[A") == -1 ||
-	 compareSimpleTypes(stackbase[*stkSizePtr - 2], "I") == -1 ||
-	 compareReferenceTypes(stackbase[*stkSizePtr - 3], // should use lub function here
-			       &stackbase[*stkSizePtr - 3][2]) == -1 )
+	 compareSimpleTypes(stackbase[*stkSizePtr - 2], "I") == -1 )
+	// compareReferenceTypes(stackbase[*stkSizePtr - 3], // should use lub function here
+	//		       &stackbase[*stkSizePtr - 3][2]) == -1 )
       return -1;
     stackbase[--(*stkSizePtr)] = "-";
     stackbase[--(*stkSizePtr)] = "-";
@@ -847,7 +846,6 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
       return -1;
     break;
-    */
 
   case 0x57: // pop
     if ( checkStackUnderflow(*stkSizePtr, 1) == -1 )
@@ -1295,6 +1293,10 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
       return -1;
     break;
 
+  case 0xa9: // ret
+    // literally don't do anything
+    break;
+
   case 0xac: // ireturn
     if ( checkStackUnderflow(*stkSizePtr, 1) == -1 ||
 	 compareSimpleTypes(retType, "I") == -1 || // check return type
@@ -1529,9 +1531,6 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 	 updateInstruction(&itable[ipos], &itable[varnum], typeArrSize) == -1 )
       return -1;
     break;
-
-
-    
 
   default:
     fprintf(stdout, "Verification for opcode %d %s not implemented!\n", op, opcodes[op].opcodeName);
