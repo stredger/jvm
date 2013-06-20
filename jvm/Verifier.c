@@ -47,6 +47,7 @@ static void printAllInstructions(method_info *m, char *name) {
       fprintf(stdout, "  %d : %s\t%d\n", i, opcodes[m->code[i]].opcodeName, m->code[i]);
     else
       fprintf(stdout, "  %d : %s\t%d\n", i, "(data)", m->code[i]);
+	i += strlen(opcodes[m->code[i]].inlineOperands); // Skip over inline operators
   }
 }
 
@@ -246,11 +247,15 @@ static int checkJumpPosition(int pos, InstructionInfo *itable, int imax) {
 
 
 static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, int ipos) {
-
+	
   int op = m->code[ipos];
   char **localsbase = itable[ipos].state;
   char **stackbase = &itable[ipos].state[m->max_locals];
   char *tmpStr;
+  char **tmpArgs;
+  char **tmpRets;
+  int tmpArgsSize;
+  int tmpIndex;
   int *stkSizePtr = &itable[ipos].stksize;
   int typeArrSize = m->max_locals + m->max_stack;
   int varnum;
@@ -1144,6 +1149,26 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     break;
 */
 
+  /*case 0xb4: // getfield
+    varnum = (m->code[ipos+1] << 8) + m->code[ipos+2];
+    printf("JOSH TEST: %s\n", GetCPItemAsString(cf, varnum));
+
+	break;
+	
+  case 0xb7: // invokespecial
+    varnum = (m->code[ipos+1] << 8) + m->code[ipos+2];
+	
+	tmpArgs = AnalyzeInvoke(cf, varnum, 0, tmpRets, &tmpArgsSize);
+	printf("JOSH TEST: Ret=%s ArgsSize=%d\n", tmpRets[0], tmpArgsSize);
+
+	//for(tmpIndex = 0; tmpIndex < tmpArgsSize; tmpIndex++) {
+		//tmpIndex = tmpArgsSize-1;
+		//printf("JOSH TEST: Arg=%s\n", tmpArgs[tmpIndex]);	
+	//}
+	
+	updateInstruction(&itable[ipos], &itable[ipos+3], typeArrSize);
+	break;
+	*/
 	
   case 0xbb: // new
 	varnum = (m->code[ipos+1] << 8) + m->code[ipos+2];
