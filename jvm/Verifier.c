@@ -1537,6 +1537,14 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
       return -1;
     break;
 
+  case 0xc8: // goto_w
+    varnum = (m->code[ipos+1] << 24) + (m->code[ipos+2] << 16) +
+      (m->code[ipos+3] << 8) + m->code[ipos+4];
+    if ( checkJumpPosition(varnum, itable, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[varnum], typeArrSize) == -1 )
+      return -1;    
+    break;
+
   case 0xc9: // jsr_w
     // treat like nop but ignore 4 inline vals
     if ( updateInstruction(&itable[ipos], &itable[ipos+5], typeArrSize) == -1 )
