@@ -42,6 +42,7 @@ should do
 
 --{ 0Xbb, "new",          "ii", ">A" },   /* create new object of type identified by class reference in constant pool index (i1 << 8 + i2) */
 
+
 { 0Xbd, "anewarray",    "ii", "I>A" },  /* create a new array of references of length count and component type identified by the class reference index (i1 << 8 + i2) in the constant pool */
 
 { 0Xc0, "checkcast",    "ii", "A>A" },  /* check whether an objectref is of a certain type, the class reference of which is in the constant pool at index (i1 << 8 + i2) */
