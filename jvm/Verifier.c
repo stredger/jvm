@@ -1338,22 +1338,45 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     if ( compareSimpleTypes(retType, "-") )
       return -1;
     break;
+  
+
+  case 0xb2: // getstatic 
+    varnum = (m->code[ipos+1] << 8) + m->code[ipos+2];
+      if ( checkInCPRange(cf->constant_pool_count, varnum) == -1 ||
+	   checkValidConstantType(cf->cp_tag[varnum]) == -1 ) 
+	return -1;
+   
+    tmpStr = SafeStrdup(strchr(GetCPItemAsString(cf, varnum), ':') + 1);
+    // Push field value on stack
+    if( strcmp(tmpStr, "D") == 0 ) {
+      stackbase[(*stkSizePtr)++] = "d";
+      stackbase[(*stkSizePtr)++] = "D";
+    } else if ( strcmp(tmpStr, "J") == 0 ) {
+      stackbase[(*stkSizePtr)++] = "l";
+      stackbase[(*stkSizePtr)++] = "L";
+    } else
+      stackbase[(*stkSizePtr)++] = SafeStrdup(tmpStr);
+      SafeFree(tmpStr);
+      if ( updateInstruction(&itable[ipos], &itable[ipos+3], typeArrSize) == -1 )
+	
+      return -1;
+    break;
 
   case 0xb4: // getfield
     varnum = (m->code[ipos+1] << 8) + m->code[ipos+2];
     if ( checkStackUnderflow(*stkSizePtr, 1) == -1 ||
 	 checkInCPRange(cf->constant_pool_count, varnum) == -1 ||
 	 compareReferenceTypes(stackbase[*stkSizePtr - 1], "A") == -1 ||
-	 checkValidConstantType(varnum) == -1 ) 
+	 checkValidConstantType(cf->cp_tag[varnum]) == -1 ) 
       return -1;
     tmpStr = SafeStrdup(strchr(GetCPItemAsString(cf, varnum), ':') + 1);
     // Pop address off stack
     stackbase[--(*stkSizePtr)] = "-";
     // Push field value on stack
-    if( compareSimpleTypes(tmpStr, "Dd") ) {
+    if( strcmp(tmpStr, "D") == 0 ) {
       stackbase[(*stkSizePtr)++] = "d";
       stackbase[(*stkSizePtr)++] = "D";
-    } else if ( compareSimpleTypes(tmpStr, "Ll") ) {
+    } else if ( strcmp(tmpStr, "J") == 0 ) {
       stackbase[(*stkSizePtr)++] = "l";
       stackbase[(*stkSizePtr)++] = "L";
     } else
@@ -1363,15 +1386,36 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
       return -1;
     break;
 
+  case 0xb3: // putstatic
   case 0xb5: // putfield
     varnum = (m->code[ipos+1] << 8) + m->code[ipos+2];
     tmpStr = SafeStrdup(strchr(GetCPItemAsString(cf, varnum), ':') + 1);
-    // Pop address off stack
-    stackbase[--(*stkSizePtr)] = "-";
     // Pop arguments off the stack (pop two spots if Dd or Ll)
-    if(strcmp(tmpStr, "Dd") == 0 || strcmp(tmpStr, "Ll") == 0)
+    if(strcmp(tmpStr, "D") == 0 ) { // double
+      if(compareSimpleTypes("D", stackbase[(*stkSizePtr) - 1]) == -1)
+        return -1;
+      if(compareSimpleTypes("d", stackbase[(*stkSizePtr) - 2]) == -1)
+        return -1;
       stackbase[--(*stkSizePtr)] = "-";
-    stackbase[--(*stkSizePtr)] = "-";
+      stackbase[--(*stkSizePtr)] = "-";
+    }
+    else if(strcmp(tmpStr, "J") == 0) { // long
+      if(compareSimpleTypes("L", stackbase[(*stkSizePtr) - 1]) == -1)
+        return -1;
+      if(compareSimpleTypes("l", stackbase[(*stkSizePtr) - 2]) == -1)
+        return -1;
+      stackbase[--(*stkSizePtr)] = "-";
+      stackbase[--(*stkSizePtr)] = "-";
+    }
+    else { // Other
+      if(compareSimpleTypes(tmpStr, stackbase[(*stkSizePtr) - 1]) == -1)
+        return -1;
+      stackbase[--(*stkSizePtr)] = "-";
+    }
+    if(op == 0xb5) { // If op = putfield
+      // Pop address off stack
+      stackbase[--(*stkSizePtr)] = "-";
+    }
     SafeFree(tmpStr);
     if ( updateInstruction(&itable[ipos], &itable[ipos+3], typeArrSize) == -1 )
       return -1;
@@ -1380,9 +1424,11 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
   case 0xb6: // invokevirtual
   case 0xb7: // invokespecial
   case 0xb8: // invokestatic
+  case 0xb9: // invokeinterface
+  case 0xba: // invokedynamic
     varnum = (m->code[ipos+1] << 8) + m->code[ipos+2];
     tmpRets = SafeMalloc(sizeof(char*));
-    if (op == 0xb8)
+    if (op == 0xb8 || op == 0xba)
       tmpArgs = AnalyzeInvoke(cf, varnum, 1, tmpRets, &tmpArgsSize);
     else
       tmpArgs = AnalyzeInvoke(cf, varnum, 0, tmpRets, &tmpArgsSize);
@@ -1395,19 +1441,21 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     // If the return type is not void (-), push it on the stack
     if(strcmp(tmpRets[0], "-") != 0) {
       if(strcmp(tmpRets[0], "Dd") == 0) {
-	stackbase[(*stkSizePtr)++] = "d";
-	stackbase[(*stkSizePtr)++] = "D";
+        stackbase[(*stkSizePtr)++] = "d";
+        stackbase[(*stkSizePtr)++] = "D";
       }
       else if(strcmp(tmpRets[0], "Ll") == 0) {
-	stackbase[(*stkSizePtr)++] = "l";
-	stackbase[(*stkSizePtr)++] = "L";
+        stackbase[(*stkSizePtr)++] = "l";
+        stackbase[(*stkSizePtr)++] = "L";
       }
       else
-	stackbase[(*stkSizePtr)++] = SafeStrdup(tmpRets[0]);
+        stackbase[(*stkSizePtr)++] = SafeStrdup(tmpRets[0]);
     }
     SafeFree(tmpRets);
-    if ( updateInstruction(&itable[ipos], &itable[ipos+3], typeArrSize) == -1 )
-      return -1;
+    if (op == 0xb9 || op == 0xba)
+      updateInstruction(&itable[ipos], &itable[ipos+5], typeArrSize);
+    else 
+      updateInstruction(&itable[ipos], &itable[ipos+3], typeArrSize);
     break;
 	
   case 0xbb: // new
@@ -1482,6 +1530,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
       return -1;
     break;
 
+
+    
 
   default:
     fprintf(stdout, "Verification for opcode %d %s not implemented!\n", op, opcodes[op].opcodeName);
