@@ -205,8 +205,16 @@ static int checkInCPRange(int cprange, int ind) {
   return 0;
 }
 
+static int checkValidConstantType(int type) {
+  if (type == 0 || type == 2 || type > 12) {
+    fprintf(stdout, "Invalid constant type code: %d\n", type);
+    return -1;
+  }
+  return 0;
+}
 
 static int checkCPType(int actualType, int expType) {
+  // check valid first?
   if ( actualType != expType ) {
     fprintf(stdout, "Constant pool type mismatch, got: %d, expected: %d\n", actualType, expType);
     return -1;
@@ -288,6 +296,7 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
   switch (op) {
 
   case 0x00: // nop
+    //  case 0xb9: // invokeinterface
     // just move to the next instruction
     if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
       return -1;
@@ -1320,7 +1329,7 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
   case 0xb0: // areturn
     if ( checkStackUnderflow(*stkSizePtr, 1) == -1 ||
 	 compareReferenceTypes(retType, "A") == -1 || 
-	 compareReferenceTypes(stackbase[*stkSizePtr - 1], retType) == -1 ) // what about inheritance?
+	 compareReferenceTypes(stackbase[*stkSizePtr - 1], retType) == -1 ) // inheritance? should be LUB yall
       return -1;
     break;
 
@@ -1330,79 +1339,49 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
       return -1;
     break;
 
-
-  case 0xbc: // newarray
-    varnum = m->code[ipos+1];
-    if ( checkStackUnderflow(*stkSizePtr, 1) == -1 ||
-	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "I") == -1 )
-      return -1;
-    switch (varnum) {
-    case 4: // bool
-    case 5: // char
-    case 8: // byte
-    case 9: // short
-    case 10: // int
-      stackbase[*stkSizePtr - 1] = "A[I";
-    case 6: // float
-      stackbase[*stkSizePtr - 1] = "A[F";
-    case 7: // double
-      stackbase[*stkSizePtr - 1] = "A[Dd";
-    case 11: // long
-      stackbase[*stkSizePtr - 1] = "A[Ll"; 
-    default:
-      return -1;
-    }
-    if ( updateInstruction(&itable[ipos], &itable[ipos+2], typeArrSize) == -1 )
-      return -1;
-    break;
-
-
-  case 0xbe: // arraylength
-    if ( checkStackUnderflow(*stkSizePtr, 1) == -1 ||
-	 compareReferenceTypes(stackbase[*stkSizePtr - 1], "A[") == -1 )
-      return -1;
-    stackbase[*stkSizePtr - 1] = "I";
-    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
-      return -1;
-    break;
-
   case 0xb4: // getfield
-    varnum = (m->code[ipos+1] << 8) + m->code[ipos+2];
+    varnum = (m->code[ipos+1] << 8) & m->code[ipos+2];
+    if ( checkStackUnderflow(*stkSizePtr, 1) == -1 ||
+	 checkInCPRange(cf->constant_pool_count, varnum) == -1 ||
+	 compareReferenceTypes(stackbase[*stkSizePtr - 1], "A") == -1 ||
+	 checkValidConstantType(varnum) == -1 ) 
+      return -1;
+   
     tmpStr = SafeStrdup(strchr(GetCPItemAsString(cf, varnum), ':') + 1);
-	// Pop address off stack
-	stackbase[--(*stkSizePtr)] = "-";
-	// Push field value on stack
-	if(strcmp(tmpStr, "Dd") == 0) {
-	  stackbase[(*stkSizePtr)++] = "d";
-	  stackbase[(*stkSizePtr)++] = "D";
-	}
-	else if(strcmp(tmpStr, "Ll") == 0) {
-	  stackbase[(*stkSizePtr)++] = "l";
-	  stackbase[(*stkSizePtr)++] = "L";
-	}
-	else
+    // Pop address off stack
+    stackbase[--(*stkSizePtr)] = "-";
+    // Push field value on stack
+    if( compareSimpleTypes(tmpStr, "Dd") ) {
+      stackbase[(*stkSizePtr)++] = "d";
+      stackbase[(*stkSizePtr)++] = "D";
+    } else if ( compareSimpleTypes(tmpStr, "Ll") ) {
+      stackbase[(*stkSizePtr)++] = "l";
+      stackbase[(*stkSizePtr)++] = "L";
+    } else
       stackbase[(*stkSizePtr)++] = SafeStrdup(tmpStr);
-	SafeFree(tmpStr);
-	updateInstruction(&itable[ipos], &itable[ipos+3], typeArrSize);
-	break;
+    SafeFree(tmpStr);
+    if ( updateInstruction(&itable[ipos], &itable[ipos+3], typeArrSize) == -1 )
+      return -1;
+    break;
 
   case 0xb5: // putfield
-    varnum = (m->code[ipos+1] << 8) + m->code[ipos+2];
-	tmpStr = SafeStrdup(strchr(GetCPItemAsString(cf, varnum), ':') + 1);
-	// Pop address off stack
-	stackbase[--(*stkSizePtr)] = "-";
-	// Pop arguments off the stack (pop two spots if Dd or Ll)
-	if(strcmp(tmpStr, "Dd") == 0 || strcmp(tmpStr, "Ll") == 0)
+    varnum = (m->code[ipos+1] << 8) & m->code[ipos+2];
+    tmpStr = SafeStrdup(strchr(GetCPItemAsString(cf, varnum), ':') + 1);
+    // Pop address off stack
+    stackbase[--(*stkSizePtr)] = "-";
+    // Pop arguments off the stack (pop two spots if Dd or Ll)
+    if(strcmp(tmpStr, "Dd") == 0 || strcmp(tmpStr, "Ll") == 0)
       stackbase[--(*stkSizePtr)] = "-";
     stackbase[--(*stkSizePtr)] = "-";
-	SafeFree(tmpStr);
-	updateInstruction(&itable[ipos], &itable[ipos+3], typeArrSize);
-	break;
+    SafeFree(tmpStr);
+    if ( updateInstruction(&itable[ipos], &itable[ipos+3], typeArrSize) == -1 )
+      return -1;
+    break;
 	
   case 0xb6: // invokevirtual
   case 0xb7: // invokespecial
   case 0xb8: // invokestatic
-    varnum = (m->code[ipos+1] << 8) + m->code[ipos+2];
+    varnum = (m->code[ipos+1] << 8) & m->code[ipos+2];
     tmpRets = SafeMalloc(sizeof(char*));
     if (op == 0xb8)
       tmpArgs = AnalyzeInvoke(cf, varnum, 1, tmpRets, &tmpArgsSize);
@@ -1428,7 +1407,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 	stackbase[(*stkSizePtr)++] = SafeStrdup(tmpRets[0]);
     }
     SafeFree(tmpRets);
-    updateInstruction(&itable[ipos], &itable[ipos+3], typeArrSize);
+    if ( updateInstruction(&itable[ipos], &itable[ipos+3], typeArrSize) == -1 )
+      return -1;
     break;
 	
   case 0xbb: // new
@@ -1444,6 +1424,40 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
       return -1;
     break;
   
+  case 0xbc: // newarray
+    varnum = m->code[ipos+1];
+    if ( checkStackUnderflow(*stkSizePtr, 1) == -1 ||
+	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "I") == -1 )
+      return -1;
+    switch (varnum) {
+    case 4: // bool
+    case 5: // char
+    case 8: // byte
+    case 9: // short
+    case 10: // int
+      stackbase[*stkSizePtr - 1] = "A[I";
+    case 6: // float
+      stackbase[*stkSizePtr - 1] = "A[F";
+    case 7: // double
+      stackbase[*stkSizePtr - 1] = "A[Dd";
+    case 11: // long
+      stackbase[*stkSizePtr - 1] = "A[Ll"; 
+    default:
+      return -1;
+    }
+    if ( updateInstruction(&itable[ipos], &itable[ipos+2], typeArrSize) == -1 )
+      return -1;
+    break;
+
+  case 0xbe: // arraylength
+    if ( checkStackUnderflow(*stkSizePtr, 1) == -1 ||
+	 compareReferenceTypes(stackbase[*stkSizePtr - 1], "A[") == -1 )
+      return -1;
+    stackbase[*stkSizePtr - 1] = "I";
+    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+      return -1;
+    break;
+
   case 0xc6: // ifnull
   case 0xc7: // ifnonnull
     varnum = (m->code[ipos+1] << 8) + m->code[ipos+2];
