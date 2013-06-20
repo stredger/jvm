@@ -246,7 +246,8 @@ static int checkJumpPosition(int pos, InstructionInfo *itable, int imax) {
 }
 
 
-static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, int ipos) {
+
+static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, int ipos, char *retType) {
 	
   int op = m->code[ipos];
   char **localsbase = itable[ipos].state;
@@ -1132,43 +1133,83 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     updateInstruction(&itable[ipos], &itable[varnum], typeArrSize);
     break;
 
-// check the return type of the method
-/*
   case 0xac: // ireturn
     if ( checkStackUnderflow(*stkSizePtr, 1) == -1 ||
+	 compareSimpleTypes(retType, "I") == -1 || // check return type
 	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "I") == -1 )
+      return -1;
       // return doesn't go anywhere so we don't update any more instructions
     break;
 
   case 0xad: // lreturn
     if ( checkStackUnderflow(*stkSizePtr, 2) == -1 ||
+	 compareSimpleTypes(retType, "Ll") == -1 ||
 	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "L") == -1 ||
 	 compareSimpleTypes(stackbase[*stkSizePtr - 2], "l") == -1 )
-      // return doesn't go anywhere so we don't update any more instructions
+      return -1;
     break;
 
   case 0xae: // freturn
     if ( checkStackUnderflow(*stkSizePtr, 1) == -1 ||
+	 compareSimpleTypes(retType, "F") == -1 ||
 	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "F") == -1 )
-      // return doesn't go anywhere so we don't update any more instructions
+      return -1;
     break;
 
   case 0xaf: // dreturn
     if ( checkStackUnderflow(*stkSizePtr, 2) == -1 ||
+	 compareSimpleTypes(retType, "Dd") == -1 ||
 	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "D") == -1 ||
 	 compareSimpleTypes(stackbase[*stkSizePtr - 2], "d") == -1 )
-      // return doesn't go anywhere so we don't update any more instructions
+      return -1;
     break;
 
   case 0xb0: // areturn
     if ( checkStackUnderflow(*stkSizePtr, 1) == -1 ||
-	 compareReferenceTypes(stackbase[*stkSizePtr - 1], "A") == -1 )
-      // return doesn't go anywhere so we don't update any more instructions
+	 compareReferenceTypes(retType, "A") == -1 || 
+	 compareReferenceTypes(stackbase[*stkSizePtr - 1], retType) == -1 ) // what about inheritance?
+      return -1;
     break;
 
   case 0xb1: // return
+    // should have void retType
+    if ( compareSimpleTypes(retType, "V") )
+      return -1;
     break;
-*/
+
+
+  case 0xbc: // newarray
+    varnum = m->code[ipos+1];
+    if ( checkStackUnderflow(*stkSizePtr, 1) == -1 ||
+	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "I") == -1 )
+      return -1;
+    switch (varnum) {
+    case 4: // bool
+    case 5: // char
+    case 8: // byte
+    case 9: // short
+    case 10: // int
+      stackbase[*stkSizePtr - 1] = "A[I";
+    case 6: // float
+      stackbase[*stkSizePtr - 1] = "A[F";
+    case 7: // double
+      stackbase[*stkSizePtr - 1] = "A[Dd";
+    case 11: // long
+      stackbase[*stkSizePtr - 1] = "A[Ll"; 
+    default:
+      return -1;
+    }
+    updateInstruction(&itable[ipos], &itable[ipos+2], typeArrSize);
+    break;
+
+
+  case 0xbe: // arraylength
+    if ( checkStackUnderflow(*stkSizePtr, 1) == -1 ||
+	 compareReferenceTypes(stackbase[*stkSizePtr - 1], "A[") == -1 )
+      return -1;
+    stackbase[*stkSizePtr - 1] = "I";
+    updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize);
+    break;
 
   /*case 0xb4: // getfield
     varnum = (m->code[ipos+1] << 8) + m->code[ipos+2];
@@ -1273,7 +1314,7 @@ static void verifyMethod( ClassFile *cf, method_info *m ) {
 	printInstructionInfo(&itable[ipos], m->max_locals, m->max_stack);
       }
 
-      if ( verifyOpcode(itable, cf, m, ipos) == -1 ) {
+	if ( verifyOpcode(itable, cf, m, ipos, retType) == -1 ) {
 	fprintf(stdout, "Verification Failed at instruction %d : %s\n", ipos, opcodes[m->code[ipos]].opcodeName);
 	// fail verification
       }
