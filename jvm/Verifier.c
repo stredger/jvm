@@ -197,6 +197,15 @@ static int checkStackUnderflow(int stksize, int toPop) {
 }
 
 
+static int checkInCPRange(int cprange, int ind) {
+  if (cprange < ind) {
+    fprintf(stdout, "Constant pool index out of range, max:%d, tried: %d\n", cprange - 1, ind);
+    return -1;
+  }
+  return 0;
+}
+
+
 static int updateInstruction(InstructionInfo *icurr, InstructionInfo *inext, int typeArrSize) {
   if (inext->state) {
       // merge the states, stacks, and bears. Oh my!
@@ -345,27 +354,74 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
       return -1;
     break;
 
-  case 0x14: // ldc2_w  TODO rest of the cases
-    varnum = (m->code[ipos+1] << 8) + m->code[ipos+2];	
-	switch(cf->cp_tag[varnum]) {
-		case 3: // CP_Integer
-			stackbase[(*stkSizePtr)++] = "I";
-			break;
-		case 4: // CP_Float
-			stackbase[(*stkSizePtr)++] = "F";
-			break;
-		case 5: // CP_Long
-			stackbase[(*stkSizePtr)++] = "l";
-		    stackbase[(*stkSizePtr)++] = "L"; 
-			break;
-		case 6: // CP_Double
-			stackbase[(*stkSizePtr)++] = "d";
-		    stackbase[(*stkSizePtr)++] = "D"; 
-			break;
-	}		
-	updateInstruction(&itable[ipos], &itable[ipos+3], typeArrSize);
-	break;
-	
+
+  case 0x12: // ldc
+    varnum = m->code[ipos+1];
+    if ( checkInCPRange(cf->constant_pool_count, varnum) == -1 ||
+	 checkStackOverflow(*stkSizePtr, 1, m->max_stack) == -1 )
+      return -1;
+    switch (cf->cp_tag[varnum]) {
+    case 3: // int
+      stackbase[(*stkSizePtr)++] = "I";
+      break;
+    case 4: // float
+      stackbase[(*stkSizePtr)++] = "F";
+      break;
+    case 8: // string
+      stackbase[(*stkSizePtr)++] = "ALjava/lang/String";
+      break;
+    default:
+      fprintf(stdout, "Trying to load incorrect constant type, tried: %d, expected 3, 4, 8\n", cf->cp_tag[varnum]);
+      return -1;
+    }
+    if ( updateInstruction(&itable[ipos], &itable[ipos+2], typeArrSize) == -1 )
+      return -1;
+    break;
+
+  case 0x13: // ldc_w
+    varnum = (m->code[ipos+1] << 8) & m->code[ipos+2];
+    if ( checkInCPRange(cf->constant_pool_count, varnum) == -1 ||
+	 checkStackOverflow(*stkSizePtr, 1, m->max_stack) == -1 )
+      return -1;
+    switch (cf->cp_tag[varnum]) {
+    case 3: // int
+      stackbase[(*stkSizePtr)++] = "I";
+      break;
+    case 4: // float
+      stackbase[(*stkSizePtr)++] = "F";
+      break;
+    case 8: // string
+      stackbase[(*stkSizePtr)++] = "ALjava/lang/String";
+      break;
+    default:
+      fprintf(stdout, "Trying to load incorrect constant type, tried: %d, expected 3, 4, 8\n", cf->cp_tag[varnum]);
+      return -1;
+    }
+    if ( updateInstruction(&itable[ipos], &itable[ipos+3], typeArrSize) == -1 )
+      return -1;
+    break;
+
+  case 0x14: // ldc2_w
+    varnum = (m->code[ipos+1] << 8) & m->code[ipos+2];
+    if ( checkInCPRange(cf->constant_pool_count, varnum) == -1 ||
+	 checkStackOverflow(*stkSizePtr, 2, m->max_stack) == -1 )
+      return -1;
+    switch(cf->cp_tag[varnum]) {
+    case 5: // CP_Long
+      stackbase[(*stkSizePtr)++] = "l";
+      stackbase[(*stkSizePtr)++] = "L"; 
+      break;
+    case 6: // CP_Double
+      stackbase[(*stkSizePtr)++] = "d";
+      stackbase[(*stkSizePtr)++] = "D"; 
+      break;
+    default:
+      fprintf(stdout, "Trying to load incorrect constant type, tried: %d, expected 5, 6\n", cf->cp_tag[varnum]);
+      return -1;
+    }		
+    updateInstruction(&itable[ipos], &itable[ipos+3], typeArrSize);
+    break;
+	    
   case 0x15: // iload
     varnum = m->code[ipos+1];
     if ( checkStackOverflow(*stkSizePtr, 1, m->max_stack) == -1 ||
