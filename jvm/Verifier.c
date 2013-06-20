@@ -1472,7 +1472,7 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 	 checkCPType(cf->cp_tag[varnum], 7) == -1 ) // make sure its a 7 (class)
       return -1; // verification failed
     tmpStr = GetCPItemAsString(cf, varnum);
-    stackbase[(*stkSizePtr)++] = SafeStrcat("A", tmpStr);
+    stackbase[(*stkSizePtr)++] = SafeStrcat("AL", tmpStr);
     SafeFree(tmpStr);
     if ( updateInstruction(&itable[ipos], &itable[ipos+3], typeArrSize) == -1 )
       return -1;
@@ -1521,6 +1521,19 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
       return -1;
     stackbase[*stkSizePtr - 1] = "I";
     if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+      return -1;
+    break;
+    
+  case 0xc1: // instanceof
+    varnum = (m->code[ipos+1] << 8) + m->code[ipos+2];    
+    if ( checkStackUnderflow(*stkSizePtr, 1) == -1 ||
+     checkInCPRange(cf->constant_pool_count, varnum) == -1 ||
+     compareReferenceTypes(stackbase[*stkSizePtr - 1], "AL") == -1 ||
+     checkCPType(cf->cp_tag[varnum], 7) == -1 )
+      return -1;   
+    stackbase[--(*stkSizePtr)] = "-"; // Pop "A"
+    stackbase[(*stkSizePtr)++] = "I"; // Push "I"
+    if ( updateInstruction(&itable[ipos], &itable[ipos+3], typeArrSize) == -1 )
       return -1;
     break;
 
