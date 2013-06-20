@@ -28,7 +28,9 @@ static void printTypeCodesArray( char **vstate, method_info *m, char *name ) {
 */
 
 static void printConstantPool(ClassFile *cf) {
-  char *cptypes[] = {"","Asciz","","","","","","class","","","Method","","NameAndType"};
+  char *cptypes[] = {"Unknown", "Asciz", "", "Integer", "Float",
+		     "Long", "Double", "Class", "String","Field",
+		     "Method", "Interface", "NameAndType"};
   int i;
   fprintf(stdout, "Constant Pool:\n");
   for (i = 1; i < cf->constant_pool_count; i++) {
@@ -195,14 +197,14 @@ static int checkStackUnderflow(int stksize, int toPop) {
 }
 
 
-static void updateInstruction(InstructionInfo *icurr, InstructionInfo *inext, int typeArrSize) {
-    if (inext->state) {
+static int updateInstruction(InstructionInfo *icurr, InstructionInfo *inext, int typeArrSize) {
+  if (inext->state) {
       // merge the states, stacks, and bears. Oh my!
-      mergeState(icurr, inext, typeArrSize);
-    } else {
-      // make a new instruction entry
-      dupInstructionInfo(icurr, inext, typeArrSize);
-    }
+      return mergeState(icurr, inext, typeArrSize);
+  }
+  // make a new instruction entry
+  dupInstructionInfo(icurr, inext, typeArrSize);
+  return 0;
 }
 
 
