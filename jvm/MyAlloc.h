@@ -21,6 +21,7 @@ extern void gc();
 extern void PrintHeapUsageStatistics();
 
 extern char *SafeStrdup( char *s );
+extern char *SafeStrcat( char *a, char *b );
 extern void *SafeMalloc( int size );
 extern void *SafeCalloc( int ncopies, int size );
 extern void SafeFree( void *p );

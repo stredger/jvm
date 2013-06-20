@@ -245,7 +245,7 @@ static int checkJumpPosition(int pos, InstructionInfo *itable, int imax) {
 }
 
 
-static int verifyOpcode(InstructionInfo *itable, method_info *m, int ipos) {
+static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, int ipos) {
 
   int op = m->code[ipos];
   char **localsbase = itable[ipos].state;
@@ -1055,7 +1055,7 @@ static int verifyOpcode(InstructionInfo *itable, method_info *m, int ipos) {
   case 0x9c: // ifge
   case 0x9d: // ifgt
   case 0x9e: // ifle
-    varnum = (m->code[ipos+1] << 8) & m->code[ipos+2];
+    varnum = (m->code[ipos+1] << 8) + m->code[ipos+2];
     if ( checkStackUnderflow(*stkSizePtr, 1) == -1 ||
 	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "I") == -1 ||
 	 checkJumpPosition(varnum, itable, m->code_length) == -1 )
@@ -1072,7 +1072,7 @@ static int verifyOpcode(InstructionInfo *itable, method_info *m, int ipos) {
   case 0xa2: // if_icmpge
   case 0xa3: // if_icmpgt
   case 0xa4: // if_icmple
-    varnum = (m->code[ipos+1] << 8) & m->code[ipos+2];
+    varnum = (m->code[ipos+1] << 8) + m->code[ipos+2];
     if ( checkStackUnderflow(*stkSizePtr, 2) == -1 ||
 	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "I") == -1 ||
 	 compareSimpleTypes(stackbase[*stkSizePtr - 2], "I") == -1 ||
@@ -1087,7 +1087,7 @@ static int verifyOpcode(InstructionInfo *itable, method_info *m, int ipos) {
 
   case 0xa5: // if_acmpeq
   case 0xa6: // if_acmpne
-    varnum = (m->code[ipos+1] << 8) & m->code[ipos+2];
+    varnum = (m->code[ipos+1] << 8) + m->code[ipos+2];
     if ( checkStackUnderflow(*stkSizePtr, 2) == -1 ||
 	 compareReferenceTypes(stackbase[*stkSizePtr - 1], "A") == -1 ||
 	 compareReferenceTypes(stackbase[*stkSizePtr - 2], "A") == -1 ||
@@ -1143,11 +1143,22 @@ static int verifyOpcode(InstructionInfo *itable, method_info *m, int ipos) {
   case 0xb1: // return
     break;
 */
+  case 0xbb: // new
+	varnum = (m->code[ipos+1] << 8) + m->code[ipos+2];
+	if ( checkStackOverflow(*stkSizePtr, 1, m->max_stack) == -1 )
+      return -1; // verification failed
+    tmpStr = GetCPItemAsString(cf, varnum);
+    stackbase[(*stkSizePtr)++] = SafeStrcat("A", tmpStr);
+	SafeFree(tmpStr);
+    updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize);
+	break;
 
-
+/* ^^ create new object of type identified by class reference in constant pool index (i1 << 8 + i2) */
+    
+  
   case 0xc6: // ifnull
   case 0xc7: // ifnonnull
-    varnum = (m->code[ipos+1] << 8) & m->code[ipos+2];
+    varnum = (m->code[ipos+1] << 8) + m->code[ipos+2];
     if ( checkStackUnderflow(*stkSizePtr, 1) == -1 ||
 	 compareReferenceTypes(stackbase[*stkSizePtr - 1], "A") == -1 ||
 	 checkJumpPosition(varnum, itable, m->code_length) == -1 )
@@ -1198,7 +1209,7 @@ static void verifyMethod( ClassFile *cf, method_info *m ) {
 	printInstructionInfo(&itable[ipos], m->max_locals, m->max_stack);
       }
 
-      if ( verifyOpcode(itable, m, ipos) == -1 ) {
+      if ( verifyOpcode(itable, cf, m, ipos) == -1 ) {
 	fprintf(stdout, "Verification Failed at instruction %d : %s\n", ipos, opcodes[m->code[ipos]].opcodeName);
 	// fail verification
       }

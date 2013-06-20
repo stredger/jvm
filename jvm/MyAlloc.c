@@ -282,6 +282,19 @@ char *SafeStrdup( char *s ) {
     return r;
 }
 
+char *SafeStrcat( char *a, char *b) {
+	char *s;
+	int len;
+	
+	len = ((a == NULL) || (b == NULL))? 0 : strlen(a) + strlen(b);
+	s = SafeMalloc(len+1);
+	if (len > 0) {
+		strcpy(s,a);
+		strcat(s,b);
+	}
+	return s;
+}
+
 
 void SafeFree( void *p ) {
     if (p == NULL || ((int)p & 0x7) != 0) {
