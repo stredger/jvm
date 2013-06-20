@@ -206,6 +206,15 @@ static int checkInCPRange(int cprange, int ind) {
 }
 
 
+static int checkCPType(int actualType, int expType) {
+  if ( actualType != expType ) {
+    fprintf(stdout, "Constant pool type mismatch, got: %d, expected: %d\n", actualType, expType);
+    return -1;
+  }
+  return 0;
+}
+
+
 static int updateInstruction(InstructionInfo *icurr, InstructionInfo *inext, int typeArrSize) {
   if (inext->state) {
       // merge the states, stacks, and bears. Oh my!
@@ -371,7 +380,7 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
       stackbase[(*stkSizePtr)++] = "ALjava/lang/String";
       break;
     default:
-      fprintf(stdout, "Trying to load incorrect constant type, tried: %d, expected 3, 4, 8\n", cf->cp_tag[varnum]);
+      fprintf(stdout, "Trying to load incorrect constant type, tried: %d, expected: 3, 4, 8\n", cf->cp_tag[varnum]);
       return -1;
     }
     if ( updateInstruction(&itable[ipos], &itable[ipos+2], typeArrSize) == -1 )
@@ -394,7 +403,7 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
       stackbase[(*stkSizePtr)++] = "ALjava/lang/String";
       break;
     default:
-      fprintf(stdout, "Trying to load incorrect constant type, tried: %d, expected 3, 4, 8\n", cf->cp_tag[varnum]);
+      fprintf(stdout, "Trying to load incorrect constant type, tried: %d, expected: 3, 4, 8\n", cf->cp_tag[varnum]);
       return -1;
     }
     if ( updateInstruction(&itable[ipos], &itable[ipos+3], typeArrSize) == -1 )
@@ -416,7 +425,7 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
       stackbase[(*stkSizePtr)++] = "D"; 
       break;
     default:
-      fprintf(stdout, "Trying to load incorrect constant type, tried: %d, expected 5, 6\n", cf->cp_tag[varnum]);
+      fprintf(stdout, "Trying to load incorrect constant type, tried: %d, expected: 5, 6\n", cf->cp_tag[varnum]);
       return -1;
     }		
     updateInstruction(&itable[ipos], &itable[ipos+3], typeArrSize);
@@ -1367,38 +1376,39 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
   case 0xb7: // invokespecial
   case 0xb8: // invokestatic
     varnum = (m->code[ipos+1] << 8) + m->code[ipos+2];
-	tmpRets = SafeMalloc(sizeof(char*));
-	if (op == 0xb8)
-	  tmpArgs = AnalyzeInvoke(cf, varnum, 1, tmpRets, &tmpArgsSize);
-	else
-	  tmpArgs = AnalyzeInvoke(cf, varnum, 0, tmpRets, &tmpArgsSize);
-	// Pop arguments off the stack (pop two spots if Dd or Ll)
-	for(tmpIndex = 0; tmpIndex < tmpArgsSize; tmpIndex++) {
-	  if(strcmp(tmpArgs[tmpIndex], "Dd") == 0 || strcmp(tmpArgs[tmpIndex], "Ll") == 0)
+    tmpRets = SafeMalloc(sizeof(char*));
+    if (op == 0xb8)
+      tmpArgs = AnalyzeInvoke(cf, varnum, 1, tmpRets, &tmpArgsSize);
+    else
+      tmpArgs = AnalyzeInvoke(cf, varnum, 0, tmpRets, &tmpArgsSize);
+    // Pop arguments off the stack (pop two spots if Dd or Ll)
+    for(tmpIndex = 0; tmpIndex < tmpArgsSize; tmpIndex++) {
+      if(strcmp(tmpArgs[tmpIndex], "Dd") == 0 || strcmp(tmpArgs[tmpIndex], "Ll") == 0)
         stackbase[--(*stkSizePtr)] = "-";
       stackbase[--(*stkSizePtr)] = "-";
-	}
-	// If the return type is not void (-), push it on the stack
-	if(strcmp(tmpRets[0], "-") != 0) {
-	    if(strcmp(tmpRets[0], "Dd") == 0) {
-		  stackbase[(*stkSizePtr)++] = "d";
-		  stackbase[(*stkSizePtr)++] = "D";
-		}
-		else if(strcmp(tmpRets[0], "Ll") == 0) {
-		  stackbase[(*stkSizePtr)++] = "l";
-		  stackbase[(*stkSizePtr)++] = "L";
-		}
-		else
-          stackbase[(*stkSizePtr)++] = SafeStrdup(tmpRets[0]);
-	}
-	SafeFree(tmpRets);
-	updateInstruction(&itable[ipos], &itable[ipos+3], typeArrSize);
-	break;
-
+    }
+    // If the return type is not void (-), push it on the stack
+    if(strcmp(tmpRets[0], "-") != 0) {
+      if(strcmp(tmpRets[0], "Dd") == 0) {
+	stackbase[(*stkSizePtr)++] = "d";
+	stackbase[(*stkSizePtr)++] = "D";
+      }
+      else if(strcmp(tmpRets[0], "Ll") == 0) {
+	stackbase[(*stkSizePtr)++] = "l";
+	stackbase[(*stkSizePtr)++] = "L";
+      }
+      else
+	stackbase[(*stkSizePtr)++] = SafeStrdup(tmpRets[0]);
+    }
+    SafeFree(tmpRets);
+    updateInstruction(&itable[ipos], &itable[ipos+3], typeArrSize);
+    break;
 	
   case 0xbb: // new
-    varnum = (m->code[ipos+1] << 8) + m->code[ipos+2];
-    if ( checkStackOverflow(*stkSizePtr, 1, m->max_stack) == -1 )
+    varnum = (m->code[ipos+1] << 8) & m->code[ipos+2];
+    if ( checkStackOverflow(*stkSizePtr, 1, m->max_stack) == -1 ||
+	 checkInCPRange(cf->constant_pool_count, varnum) == -1 ||
+	 checkCPType(cf->cp_tags[varnum], 7) == -1 ) // make sure its a 7 (class)
       return -1; // verification failed
     tmpStr = GetCPItemAsString(cf, varnum);
     stackbase[(*stkSizePtr)++] = SafeStrcat("A", tmpStr);
