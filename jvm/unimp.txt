@@ -32,11 +32,15 @@ should do
 --{ 0Xb4, "getfield",     "ii", "A>X" },  /* get a field value of an object objectref, where the field is identified by field reference in the constant pool index (index1 << 8 + index2) */
 
 { 0Xb5, "putfield",     "ii", "AX>" },  /* set field to value in an object objectref, where the field is identified by a field reference index in constant pool (i1 << 8 + i2) */
+<<<<<<< HEAD
+
+=======
 { 0Xb6, "invokevirtual", "ii", "A*>*" }, /* invoke virtual method on object objectref, where the method is identified by method reference index in constant pool (i1 << 8 + i2) */
 
 --{ 0Xb7, "invokespecial", "ii", "A*>*" }, /* invoke instance method on object objectref, where the method is identified by method reference index in constant pool (i1 << 8 + i2) */
 
 { 0Xb8, "invokestatic", "ii", "*>*" },   /* invoke a static method, where the method is identified by method reference index in constant pool (i1 << 8 + i2) */
+>>>>>>> 5ea9996e6222f18032404cab4ac9caf077bdabaa
 { 0Xb9, "invokeinterface", "iic0", "A*>*" }, /* invoke an interface method on object objectref, where the interface method is identified by method reference index in constant pool (i1 << 8 + i2) */
 { 0Xba, "invokedynamic", "ii00", "*>*" }, /* invoke a dynamic method identified by method reference index in constant pool (i1 << 8 + i2) */
 
