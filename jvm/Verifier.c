@@ -1435,7 +1435,7 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     varnum = (m->code[ipos+1] << 8) & m->code[ipos+2];
     if ( checkStackOverflow(*stkSizePtr, 1, m->max_stack) == -1 ||
 	 checkInCPRange(cf->constant_pool_count, varnum) == -1 ||
-	 checkCPType(cf->cp_tags[varnum], 7) == -1 ) // make sure its a 7 (class)
+	 checkCPType(cf->cp_tag[varnum], 7) == -1 ) // make sure its a 7 (class)
       return -1; // verification failed
     tmpStr = GetCPItemAsString(cf, varnum);
     stackbase[(*stkSizePtr)++] = SafeStrcat("A", tmpStr);
