@@ -1150,7 +1150,7 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 
   case 0x85: // i2l
     if ( checkStackUnderflow(*stkSizePtr, 1) == -1 ||
-	 checkStackOverflow(*stkSizePtr, 2, m->max_stack) == -1 ||
+	 checkStackOverflow(*stkSizePtr, 1, m->max_stack) == -1 ||
 	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "I") == -1 )
       return -1;
     stackbase[(*stkSizePtr) - 1] = "L"; // overwrite the old stack ele
@@ -1172,7 +1172,7 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 
   case 0x87: // i2d
     if ( checkStackUnderflow(*stkSizePtr, 1) == -1 ||
-	 checkStackOverflow(*stkSizePtr, 2, m->max_stack) == -1 ||
+	 checkStackOverflow(*stkSizePtr, 1, m->max_stack) == -1 ||
 	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "I") == -1 )
       return -1;
     stackbase[(*stkSizePtr) - 1] = "D";
@@ -1230,7 +1230,7 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 
   case 0x8c: // f2l
     if ( checkStackUnderflow(*stkSizePtr, 1) == -1 ||
-	 checkStackOverflow(*stkSizePtr, 2, m->max_stack) == -1 ||
+	 checkStackOverflow(*stkSizePtr, 1, m->max_stack) == -1 ||
 	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "F") == -1 )
       return -1;
     stackbase[(*stkSizePtr) - 1] = "L"; // overwrite the old stack ele
@@ -1242,7 +1242,7 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 
   case 0x8d: // f2d
     if ( checkStackUnderflow(*stkSizePtr, 1) == -1 ||
-	 checkStackOverflow(*stkSizePtr, 2, m->max_stack) == -1 ||
+	 checkStackOverflow(*stkSizePtr, 1, m->max_stack) == -1 ||
 	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "F") == -1 )
       return -1;
     stackbase[(*stkSizePtr) - 1] = "D"; // overwrite the old stack ele
@@ -1413,6 +1413,7 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 	 compareSimpleTypes(stackbase[*stkSizePtr -1], "I") == -1 )
       return -1;
     stackbase[--(*stkSizePtr)] = "-";
+
     varnum = ipos+1;
     if (varnum % 4) // make sure varnum is a multiple of 4
       varnum += (varnum % 4);
@@ -1422,6 +1423,7 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     // check in code range??
     if ( updateInstruction(&itable[ipos], &itable[ipos + switchDefault], typeArrSize) == -1 )
       return -1;
+
     switchLow = (m->code[varnum] << 24) + (m->code[varnum+1] << 16) + 
       (m->code[varnum+2] << 8) + m->code[varnum+3];
     varnum += 4;
@@ -1442,6 +1444,7 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 	 compareSimpleTypes(stackbase[*stkSizePtr -1], "I") == -1 )
       return -1;
     stackbase[--(*stkSizePtr)] = "-";
+
     varnum = ipos+1;
     if (varnum % 4) // make sure varnum is a multiple of 4
       varnum += (varnum % 4);
@@ -1450,6 +1453,7 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     varnum += 4;
     if ( updateInstruction(&itable[ipos], &itable[ipos + switchDefault], typeArrSize) == -1 )
       return -1;
+
     sloop = (m->code[varnum] << 24) + (m->code[varnum+1] << 16) + 
       (m->code[varnum+2] << 8) + m->code[varnum+3];
     varnum += 4;
@@ -1844,23 +1848,23 @@ static void verifyMethod( ClassFile *cf, method_info *m ) {
       printAllInstructions(m, name);
 
     //if (tracingExecution & TRACE_VERIFY)
-    // printTypeCodesArray(initState, m, name);
+    //  printTypeCodesArray(initState, m, name);
 
     do {
-      //if (tracingExecution & TRACE_VERIFY) {
-    fprintf(stdout, "Instruction %d %s:\n", ipos, opcodes[m->code[ipos]].opcodeName);
-	//fprintf(stdout, "Pre Instruction ");
-	//printInstructionInfo(&itable[ipos], m->max_locals, m->max_stack);
-      //}
+      if (tracingExecution & TRACE_VERIFY) {
+	fprintf(stdout, "Instruction %d %s:\n", ipos, opcodes[m->code[ipos]].opcodeName);
+	fprintf(stdout, "Pre Instruction ");
+	printInstructionInfo(&itable[ipos], m->max_locals, m->max_stack);
+      }
 
 	if ( verifyOpcode(itable, cf, m, ipos, retType) == -1 ) {
 	fprintf(stderr, "Verification Failed at instruction %d : %s\n", ipos, opcodes[m->code[ipos]].opcodeName);
 	exit(-1);
       }
-	if (tracingExecution & TRACE_VERIFY) {
-	fprintf(stdout, "Post Instruction ");
-	printInstructionInfo(&itable[ipos], m->max_locals, m->max_stack);
-	}
+	//	if (tracingExecution & TRACE_VERIFY) {
+	//fprintf(stdout, "Post Instruction ");
+	//printInstructionInfo(&itable[ipos], m->max_locals, m->max_stack);
+	//}
 
     } while ( (ipos = findChangedInstruction(itable, ipos, m->code_length)) != -1 );
 
