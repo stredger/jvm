@@ -168,6 +168,7 @@ static int mergeState(InstructionInfo* oldi, InstructionInfo* newi, int typeArrL
 static int findChangedInstruction(InstructionInfo *itable, int ipos, int imax) {
   int numchecked;
   while (numchecked < imax) {
+    printf("------===ipos: %d\n", ipos);
     if (itable[ipos].state && itable[ipos].cbit) {
       if (tracingExecution & TRACE_VERIFY)
 	fprintf(stdout, "Found instruction to verify at: %d\n", ipos);
@@ -224,7 +225,6 @@ static int checkCPType(int actualType, int expType) {
   }
   return 0;
 }
-
 
 static int updateInstruction(InstructionInfo *icurr, InstructionInfo *inext, int typeArrSize) {
   if (inext->state) {
@@ -1287,8 +1287,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 
   case 0xa7: // goto
     varnum = (m->code[ipos+1] << 8) + m->code[ipos+2];
-    if ( checkJumpPosition(varnum, itable, m->code_length) == -1 ||
-	 updateInstruction(&itable[ipos], &itable[varnum], typeArrSize) == -1 )
+    if ( checkJumpPosition(ipos + varnum, itable, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos + varnum], typeArrSize) == -1 )
       return -1;
     break;
 
@@ -1309,16 +1309,12 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     stackbase[--(*stkSizePtr)] = "-";
 
     varnum = ipos+1;
-    printf("---------> varnum: %d\n", varnum);
     if (varnum % 4) // make sure varnum is a multiple of 4
       varnum += (varnum % 4);
-    printf("---------> varnum: %d\n", varnum);
 
     switchDefault = (m->code[varnum] << 24) + (m->code[varnum+1] << 16) + 
-      (m->code[varnum+2] << 8) + m->code[varnum+3] + 1; // its this val plus 1 for some reason...
+      (m->code[varnum+2] << 8) + m->code[varnum+3] + 1;
     varnum += 4;
-    printf("--------->varnum: %d\n", varnum);
-    printf("--------->default: %d\n", switchDefault);
     // check in code range??
     if ( updateInstruction(&itable[ipos], &itable[switchDefault], typeArrSize) == -1 )
       return -1;
@@ -1326,23 +1322,16 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     switchLow = (m->code[varnum] << 24) + (m->code[varnum+1] << 16) + 
       (m->code[varnum+2] << 8) + m->code[varnum+3];
     varnum += 4;
-    printf("--------->varnum: %d\n", varnum);
-    printf("--------->low: %d\n", switchLow);
 
     switchHigh = (m->code[varnum] << 24) + (m->code[varnum+1] << 16) + 
       (m->code[varnum+2] << 8) + m->code[varnum+3];
     varnum += 4;
-    printf("--------->varnum: %d\n", varnum);
-    printf("--------->high: %d\n", switchHigh);
-    int i;
-    for (i = 0; i < switchHigh - switchLow + 1; i++) {
+    int sloop;
+    for (sloop = 0; sloop < switchHigh - switchLow + 1; sloop++) {
       switchDefault = (m->code[varnum] << 24) + (m->code[varnum+1] << 16) + 
 	(m->code[varnum+2] << 8) + m->code[varnum+3] + 1;
       varnum += 4;
-      printf("--------->varnum: %d\n", varnum);
-      printf("--------->addr: %d\n", switchDefault);      
-      //
-      if ( updateInstruction(&itable[ipos], &itable[switchDefault+1], typeArrSize) == -1 )
+      if ( updateInstruction(&itable[ipos], &itable[switchDefault], typeArrSize) == -1 )
 	return -1;
     }
     break;
@@ -1641,8 +1630,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
   case 0xc8: // goto_w
     varnum = (m->code[ipos+1] << 24) + (m->code[ipos+2] << 16) +
       (m->code[ipos+3] << 8) + m->code[ipos+4];
-    if ( checkJumpPosition(varnum, itable, m->code_length) == -1 ||
-	 updateInstruction(&itable[ipos], &itable[varnum], typeArrSize) == -1 )
+    if ( checkJumpPosition(ipos + varnum, itable, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos + varnum], typeArrSize) == -1 )
       return -1;    
     break;
 
