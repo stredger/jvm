@@ -1,3 +1,6 @@
+// Stephen Tredger, V00185745
+// Josh Erickson, V00218296
+
 /* Verifier.c */
 
 #include <stdio.h>
