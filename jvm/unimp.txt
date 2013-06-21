@@ -5,9 +5,9 @@ compare refs use N or just make N an A?
 
  TODO's
 Huge num of string mem leaks
-push / pop functions
-add verification and vbit to see if all inline instructions present n' shit
-update instruction should check if last instruction for "falling off end"
+update instruction should check if last instruction for "falling off
+end"
+nulls??
 fix dups
 aastore???
 
@@ -16,10 +16,6 @@ http://docs.oracle.com/javase/specs/jvms/se7/html/jvms-6.html#jvms-6.5.checkcast
 
 
 could do
-
-
-{ 0Xaa, "tableswitch",  "4+", "I>" },   /* continue execution from an address in the table at offset index */
-{ 0Xab, "lookupswitch", "4+", "I>" },   /* a target address is looked up from a table using a key and execution continues from the instruction at that address */
 
 { 0Xbf, "athrow",       "", "A>" },     /* throw an error or exception (notice that the rest of the stack is cleared, leaving only a reference to the Throwable) */
 

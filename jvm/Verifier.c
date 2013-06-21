@@ -1345,9 +1345,22 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
       varnum += (varnum % 4);
 
     switchDefault = (m->code[varnum] << 24) + (m->code[varnum+1] << 16) + 
-      (m->code[varnum+2] << 8) + m->code[varnum+3] + 1;
+      (m->code[varnum+2] << 8) + m->code[varnum+3];
     varnum += 4;
+    if ( updateInstruction(&itable[ipos], &itable[ipos + switchDefault], typeArrSize) == -1 )
+      return -1;
 
+    sloop = (m->code[varnum] << 24) + (m->code[varnum+1] << 16) + 
+      (m->code[varnum+2] << 8) + m->code[varnum+3];
+    varnum += 4;
+    for ( ; sloop > 0; sloop--) {
+      varnum += 4; // move past the actual value to the offset
+      switchDefault = (m->code[varnum] << 24) + (m->code[varnum+1] << 16) + 
+	(m->code[varnum+2] << 8) + m->code[varnum+3];
+      varnum += 4;
+      if ( updateInstruction(&itable[ipos], &itable[ipos + switchDefault], typeArrSize) == -1 )
+	return -1;      
+    }
     break;
 
   case 0xac: // ireturn
