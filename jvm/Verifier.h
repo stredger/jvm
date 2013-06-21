@@ -7,7 +7,6 @@
 
 typedef struct {
   short cbit;
-  short vbit;
   char **state;
   int stksize;
 } InstructionInfo;
