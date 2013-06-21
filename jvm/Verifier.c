@@ -1352,9 +1352,9 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
       return -1;
     stackbase[--(*stkSizePtr)] = "-";
     // uprade branch point and next instruction
-    if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
+    if ( checkCodePosition(ipos+3, m->code_length) == -1 ||
 	 checkCodePosition(ipos+varnum, m->code_length) == -1 ||
-	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+3], typeArrSize) == -1 ||
 	 updateInstruction(&itable[ipos], &itable[ipos + varnum], typeArrSize) == -1 )
       return -1;
     break;
@@ -1373,9 +1373,9 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     stackbase[--(*stkSizePtr)] = "-";
     stackbase[--(*stkSizePtr)] = "-";
     // uprade branch point and next instruction
-    if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
+    if ( checkCodePosition(ipos+3, m->code_length) == -1 ||
 	 checkCodePosition(ipos+varnum, m->code_length) == -1 ||
-	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 || 
+	 updateInstruction(&itable[ipos], &itable[ipos+3], typeArrSize) == -1 || 
 	 updateInstruction(&itable[ipos], &itable[ipos + varnum], typeArrSize) == -1 )
       return -1;
     break;
@@ -1389,9 +1389,9 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
       return -1;
     stackbase[--(*stkSizePtr)] = "-";
     stackbase[--(*stkSizePtr)] = "-";
-    if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
+    if ( checkCodePosition(ipos+3, m->code_length) == -1 ||
 	 checkCodePosition(ipos+varnum, m->code_length) == -1 ||
-	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+], typeArrSize) == -1 ||
 	 updateInstruction(&itable[ipos], &itable[ipos + varnum], typeArrSize) == -1 )
       return -1;
     break;
@@ -1799,9 +1799,9 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 	 compareReferenceTypes(stackbase[*stkSizePtr - 1], "A") == -1 )
       return -1;
     stackbase[--(*stkSizePtr)] = "-";
-    if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
+    if ( checkCodePosition(ipos+3, m->code_length) == -1 ||
 	 checkCodePosition(ipos+varnum, m->code_length) == -1 ||
-	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+3], typeArrSize) == -1 ||
 	 updateInstruction(&itable[ipos], &itable[ipos + varnum], typeArrSize) == -1 )
       return -1;
     break;

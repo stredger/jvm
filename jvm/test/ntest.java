@@ -40,13 +40,13 @@ class ntest {
 	k = 1;
     }
 
-
+    /*
     public static void ds(double a, double b) {
 	a = b;
     }
 
 
-    /*
+    
     public static double cast(int i, float f, double d, long l) {
 	i = (int) f;
         i = (int) d;
@@ -60,7 +60,7 @@ class ntest {
     }
     */
 
-    public int cmp(int i, int j, double d, double f) {
+    public int cmp(int i, int j, int f, double d) {
 	if (i > j) {
 	    j = i;
 	} else if (j > i) {
