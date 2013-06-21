@@ -609,7 +609,7 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 
   case 0x2f: // laload
     if ( checkStackUnderflow(*stkSizePtr, 2) == -1 ||
-	 compareReferenceTypes(stackbase[*stkSizePtr - 2], "A[Ll") == -1 ||
+	 compareReferenceTypes(stackbase[*stkSizePtr - 2], "A[J") == -1 ||
 	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "I") == -1 )
 	 return -1;
     stackbase[*stkSizePtr - 2] = "L";
@@ -633,7 +633,7 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 
   case 0x31: // daload
     if ( checkStackUnderflow(*stkSizePtr, 2) == -1 ||
-	 compareReferenceTypes(stackbase[*stkSizePtr - 2], "A[Dd") == -1 ||
+     compareReferenceTypes(stackbase[*stkSizePtr - 2], "A[D") == -1 ||
 	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "I") == -1 )
 	 return -1;
     stackbase[*stkSizePtr - 2] = "D";
@@ -648,9 +648,11 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 	 compareReferenceTypes(stackbase[*stkSizePtr - 2], "A[A") == -1 ||
 	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "I") == -1 )
 	 return -1;
-    // chop the A[ off the type, should really do a strdup here.. and everywhere actually
-    stackbase[*stkSizePtr - 2] = &stackbase[*stkSizePtr - 1][2];
+    
     stackbase[--(*stkSizePtr)] = "-";
+    tmpStr = SafeStrdup(stackbase[*stkSizePtr - 1] + 2);
+    stackbase[*stkSizePtr - 1] = SafeStrdup(tmpStr);
+    SafeFree(tmpStr);
     if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
 	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
       return -1;
@@ -827,7 +829,7 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 
   case 0x50: // lastore
     if ( checkStackUnderflow(*stkSizePtr, 4) == -1 ||
-	 compareReferenceTypes(stackbase[*stkSizePtr - 4], "A[Ll") == -1 ||
+	 compareReferenceTypes(stackbase[*stkSizePtr - 4], "A[J") == -1 ||
 	 compareSimpleTypes(stackbase[*stkSizePtr - 3], "I") == -1 ||
 	 compareSimpleTypes(stackbase[*stkSizePtr - 2], "L") == -1 ||
 	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "l") == -1 )
@@ -857,7 +859,7 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 
   case 0x52: // dastore
     if ( checkStackUnderflow(*stkSizePtr, 4) == -1 ||
-	 compareReferenceTypes(stackbase[*stkSizePtr - 4], "A[Dd") == -1 ||
+	 compareReferenceTypes(stackbase[*stkSizePtr - 4], "A[D") == -1 ||
 	 compareSimpleTypes(stackbase[*stkSizePtr - 3], "I") == -1 ||
 	 compareSimpleTypes(stackbase[*stkSizePtr - 2], "D") == -1 ||
 	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "d") == -1 )
@@ -873,11 +875,15 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 
   case 0x53: // aastore
     if ( checkStackUnderflow(*stkSizePtr, 3) == -1 ||
-	 compareReferenceTypes(stackbase[*stkSizePtr - 2], "A[A") == -1 ||
-	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "I") == -1 )
+	 compareReferenceTypes(stackbase[*stkSizePtr - 3], "A[A") == -1 ||
+	 compareSimpleTypes(stackbase[*stkSizePtr - 2], "I") == -1 ||
+     (compareReferenceTypes(stackbase[*stkSizePtr - 1], "A") == -1 
+         && compareReferenceTypes(stackbase[*stkSizePtr - 1], "A") == -1 ))
 	// compareReferenceTypes(stackbase[*stkSizePtr - 3], // should use lub function here
 	//		       &stackbase[*stkSizePtr - 3][2]) == -1 )
       return -1;
+      
+      
     stackbase[--(*stkSizePtr)] = "-";
     stackbase[--(*stkSizePtr)] = "-";
     stackbase[--(*stkSizePtr)] = "-";
@@ -1629,10 +1635,10 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
       stackbase[*stkSizePtr - 1] = "A[F";
       break;
     case 7: // double
-      stackbase[*stkSizePtr - 1] = "A[Dd";
+      stackbase[*stkSizePtr - 1] = "A[D";
       break;
     case 11: // long
-      stackbase[*stkSizePtr - 1] = "A[Ll";
+      stackbase[*stkSizePtr - 1] = "A[J";
       break;
     default:
       return -1;
@@ -1648,7 +1654,7 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "I") == -1 )
       return -1;
     tmpStr = GetCPItemAsString(cf, varnum);
-    stackbase[*stkSizePtr - 1] = SafeStrcat("A[", tmpStr);
+    stackbase[*stkSizePtr - 1] = SafeStrcat("A[AL", tmpStr);
     SafeFree(tmpStr);
     if ( checkCodePosition(ipos+3, m->code_length) == -1 ||
 	 updateInstruction(&itable[ipos], &itable[ipos+3], typeArrSize) == -1 )
