@@ -168,7 +168,6 @@ static int mergeState(InstructionInfo* oldi, InstructionInfo* newi, int typeArrL
 static int findChangedInstruction(InstructionInfo *itable, int ipos, int imax) {
   int numchecked;
   while (numchecked < imax) {
-    printf("------===ipos: %d\n", ipos);
     if (itable[ipos].state && itable[ipos].cbit) {
       if (tracingExecution & TRACE_VERIFY)
 	fprintf(stdout, "Found instruction to verify at: %d\n", ipos);
@@ -285,7 +284,7 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
   char *tmpStr;
   char **tmpArgs;
   char **tmpRets;
-  int tmpArgsSize, tmpIndex, varnum, switchHigh, switchLow, switchDefault;
+  int tmpArgsSize, tmpIndex, varnum, switchHigh, switchLow, switchDefault, sloop;
   int *stkSizePtr = &itable[ipos].stksize;
   int typeArrSize = m->max_locals + m->max_stack;
 
@@ -1313,10 +1312,10 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
       varnum += (varnum % 4);
 
     switchDefault = (m->code[varnum] << 24) + (m->code[varnum+1] << 16) + 
-      (m->code[varnum+2] << 8) + m->code[varnum+3] + 1;
+      (m->code[varnum+2] << 8) + m->code[varnum+3];
     varnum += 4;
     // check in code range??
-    if ( updateInstruction(&itable[ipos], &itable[switchDefault], typeArrSize) == -1 )
+    if ( updateInstruction(&itable[ipos], &itable[ipos + switchDefault], typeArrSize) == -1 )
       return -1;
 
     switchLow = (m->code[varnum] << 24) + (m->code[varnum+1] << 16) + 
@@ -1326,17 +1325,29 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     switchHigh = (m->code[varnum] << 24) + (m->code[varnum+1] << 16) + 
       (m->code[varnum+2] << 8) + m->code[varnum+3];
     varnum += 4;
-    int sloop;
     for (sloop = 0; sloop < switchHigh - switchLow + 1; sloop++) {
       switchDefault = (m->code[varnum] << 24) + (m->code[varnum+1] << 16) + 
-	(m->code[varnum+2] << 8) + m->code[varnum+3] + 1;
+	(m->code[varnum+2] << 8) + m->code[varnum+3];
       varnum += 4;
-      if ( updateInstruction(&itable[ipos], &itable[switchDefault], typeArrSize) == -1 )
+      if ( updateInstruction(&itable[ipos], &itable[ipos + switchDefault], typeArrSize) == -1 )
 	return -1;
     }
     break;
 
   case 0xab: // lookupswitch
+    if ( checkStackUnderflow(*stkSizePtr, 1) == -1 ||
+	 compareSimpleTypes(stackbase[*stkSizePtr -1], "I") == -1 )
+      return -1;
+    stackbase[--(*stkSizePtr)] = "-";
+
+    varnum = ipos+1;
+    if (varnum % 4) // make sure varnum is a multiple of 4
+      varnum += (varnum % 4);
+
+    switchDefault = (m->code[varnum] << 24) + (m->code[varnum+1] << 16) + 
+      (m->code[varnum+2] << 8) + m->code[varnum+3] + 1;
+    varnum += 4;
+
     break;
 
   case 0xac: // ireturn
