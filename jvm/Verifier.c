@@ -282,9 +282,10 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
   char **localsbase = itable[ipos].state;
   char **stackbase = &itable[ipos].state[m->max_locals];
   char *tmpStr;
+  char *tmpStr2;
   char **tmpArgs;
   char **tmpRets;
-  int tmpArgsSize, tmpIndex, varnum, switchHigh, switchLow, switchDefault, sloop;
+  int tmpArgsSize, tmpIndex, tmpIndex2, varnum, switchHigh, switchLow, switchDefault, sloop;
   int *stkSizePtr = &itable[ipos].stksize;
   int typeArrSize = m->max_locals + m->max_stack;
 
@@ -1632,7 +1633,38 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     varnum = (m->code[ipos+1] << 8) + m->code[ipos+2];
     tmpArgsSize = m->code[ipos+3];
     
-    // TODO Work in progress
+    if ( checkStackUnderflow(*stkSizePtr, 1) == -1)
+      return -1;
+    
+    for(tmpIndex = 0; tmpIndex < tmpArgsSize; tmpIndex++) {
+      if(compareSimpleTypes(stackbase[*stkSizePtr - tmpIndex - 1], "I") == -1)
+        return -1;
+    }
+   
+    for(tmpIndex = 0; tmpIndex < tmpArgsSize; tmpIndex++) {
+      stackbase[--(*stkSizePtr)] = "-";
+    }
+    
+    tmpStr2 = GetCPItemAsString(cf, varnum);
+    tmpStr = SafeMalloc((strlen(tmpStr2) + tmpArgsSize)*sizeof(char));
+
+    tmpIndex = 0;
+    for(tmpIndex2 = 0; tmpIndex2 < tmpArgsSize; tmpIndex2++) {
+      tmpStr[tmpIndex] = 'A';
+      tmpIndex++;
+      tmpStr[tmpIndex] = tmpStr2[tmpIndex2];
+      tmpIndex++;
+    }
+    while(tmpStr2[tmpIndex2] != '\0') {
+      tmpStr[tmpIndex] = tmpStr2[tmpIndex2];
+      tmpIndex++;
+      tmpIndex2++;
+    }
+    tmpStr[tmpIndex] = '\0';
+
+    stackbase[(*stkSizePtr)++] = SafeStrdup(tmpStr);
+    SafeFree(tmpStr);
+    SafeFree(tmpStr2);
     
     if ( updateInstruction(&itable[ipos], &itable[ipos+4], typeArrSize) == -1 )
       return -1;
