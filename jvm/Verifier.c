@@ -177,7 +177,7 @@ static int findChangedInstruction(InstructionInfo *itable, int ipos, int imax) {
     numchecked++;
   }
   if (tracingExecution & TRACE_VERIFY)
-    fprintf(stdout, "Failed to find more instructions to verify\n");
+    fprintf(stdout, "No more instructions to verify\n");
   return -1;
 }
 
@@ -376,7 +376,6 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 	 updateInstruction(&itable[ipos], &itable[ipos+3], typeArrSize) == -1 )
       return -1;
     break;
-
 
   case 0x12: // ldc
     varnum = m->code[ipos+1];
@@ -1119,10 +1118,13 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 
   case 0x84: // iinc
     varnum = m->code[ipos+1];
-    if ( checkInLocalsRange(varnum, m->max_locals) == -1 )
+    if ( checkInLocalsRange(varnum, m->max_locals) == -1 ||
+	 compareSimpleTypes(localsbase[varnum], "I") == -1 )
       return -1;
     // dont need to do anything with the second inline, and no types change. Done!
-    updateInstruction(&itable[ipos], &itable[ipos+3], typeArrSize); // +3 as 2 inline
+    if ( checkCodePosition(ipos+3, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+3], typeArrSize) == -1 ) // +3 as 2 inline
+      return -1;
     break;
 
   case 0x85: // i2l
@@ -1283,7 +1285,7 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     break;
 
   case 0x97: // dcmpl
-  case 0x98: // dcmpl
+  case 0x98: // dcmpg
     if ( checkStackUnderflow(*stkSizePtr, 4) == -1 ||
 	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "D") == -1 || 
 	 compareSimpleTypes(stackbase[*stkSizePtr - 2], "d") == -1 || 
@@ -1378,22 +1380,18 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 	 compareSimpleTypes(stackbase[*stkSizePtr -1], "I") == -1 )
       return -1;
     stackbase[--(*stkSizePtr)] = "-";
-
     varnum = ipos+1;
     if (varnum % 4) // make sure varnum is a multiple of 4
       varnum += (varnum % 4);
-
     switchDefault = (m->code[varnum] << 24) + (m->code[varnum+1] << 16) + 
       (m->code[varnum+2] << 8) + m->code[varnum+3];
     varnum += 4;
     // check in code range??
     if ( updateInstruction(&itable[ipos], &itable[ipos + switchDefault], typeArrSize) == -1 )
       return -1;
-
     switchLow = (m->code[varnum] << 24) + (m->code[varnum+1] << 16) + 
       (m->code[varnum+2] << 8) + m->code[varnum+3];
     varnum += 4;
-
     switchHigh = (m->code[varnum] << 24) + (m->code[varnum+1] << 16) + 
       (m->code[varnum+2] << 8) + m->code[varnum+3];
     varnum += 4;
@@ -1411,17 +1409,14 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 	 compareSimpleTypes(stackbase[*stkSizePtr -1], "I") == -1 )
       return -1;
     stackbase[--(*stkSizePtr)] = "-";
-
     varnum = ipos+1;
     if (varnum % 4) // make sure varnum is a multiple of 4
       varnum += (varnum % 4);
-
     switchDefault = (m->code[varnum] << 24) + (m->code[varnum+1] << 16) + 
       (m->code[varnum+2] << 8) + m->code[varnum+3];
     varnum += 4;
     if ( updateInstruction(&itable[ipos], &itable[ipos + switchDefault], typeArrSize) == -1 )
       return -1;
-
     sloop = (m->code[varnum] << 24) + (m->code[varnum+1] << 16) + 
       (m->code[varnum+2] << 8) + m->code[varnum+3];
     varnum += 4;
