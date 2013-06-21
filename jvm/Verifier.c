@@ -330,9 +330,9 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
   case 0x09: // lconst_0
   case 0x0a: // lconst_1
     if ( checkStackOverflow(*stkSizePtr, 2, m->max_stack) == -1 )
-      return -1;  
-    stackbase[(*stkSizePtr)++] = "l"; // push l onto stack
+      return -1;
     stackbase[(*stkSizePtr)++] = "L"; // push L onto stack
+    stackbase[(*stkSizePtr)++] = "l"; // push l onto stack
     if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
 	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
       return -1;
@@ -353,8 +353,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
   case 0x0f: // dconst_1
     if ( checkStackOverflow(*stkSizePtr, 2, m->max_stack) == -1 )
       return -1;  
-    stackbase[(*stkSizePtr)++] = "d"; // push d onto stack
     stackbase[(*stkSizePtr)++] = "D"; // push D onto stack
+    stackbase[(*stkSizePtr)++] = "d"; // push d onto stack
     if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
 	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
       return -1;
@@ -435,12 +435,12 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
       return -1;
     switch(cf->cp_tag[varnum]) {
     case 5: // CP_Long
-      stackbase[(*stkSizePtr)++] = "l";
       stackbase[(*stkSizePtr)++] = "L"; 
+      stackbase[(*stkSizePtr)++] = "l";
       break;
     case 6: // CP_Double
-      stackbase[(*stkSizePtr)++] = "d";
       stackbase[(*stkSizePtr)++] = "D"; 
+      stackbase[(*stkSizePtr)++] = "d";
       break;
     default:
       fprintf(stdout, "Trying to load incorrect constant type, tried: %d, expected: 5, 6\n", cf->cp_tag[varnum]);
@@ -468,8 +468,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 	 checkInLocalsRange(varnum, m->max_locals) == -1 ||
 	 compareSimpleTypes(localsbase[varnum], "Ll") == -1 )
       return -1;
-    stackbase[(*stkSizePtr)++] = "l";
     stackbase[(*stkSizePtr)++] = "L";
+    stackbase[(*stkSizePtr)++] = "l";
     // the next instruction is the current instruction position plus two (plus 1 is the inline!)
     if ( checkCodePosition(ipos+2, m->code_length) == -1 ||
 	 updateInstruction(&itable[ipos], &itable[ipos+2], typeArrSize) == -1 )
@@ -495,8 +495,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 	 checkInLocalsRange(varnum, m->max_locals) == -1 ||
 	 compareSimpleTypes(localsbase[varnum], "Dd") == -1 )
       return -1;
-    stackbase[(*stkSizePtr)++] = "d";
     stackbase[(*stkSizePtr)++] = "D";
+    stackbase[(*stkSizePtr)++] = "d";
     // the next instruction is the current instruction position plus two
     if ( checkCodePosition(ipos+2, m->code_length) == -1 ||
 	 updateInstruction(&itable[ipos], &itable[ipos+2], typeArrSize) == -1 )
@@ -539,8 +539,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 	 checkInLocalsRange(varnum, m->max_locals) == -1 ||
 	 compareSimpleTypes(localsbase[varnum], "Ll") == -1 )
       return -1;
-    stackbase[(*stkSizePtr)++] = "l";
     stackbase[(*stkSizePtr)++] = "L";
+    stackbase[(*stkSizePtr)++] = "l"; 
     if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
 	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
       return -1;
@@ -570,8 +570,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 	 checkInLocalsRange(varnum, m->max_locals) == -1 ||
 	 compareSimpleTypes(localsbase[varnum], "Dd") == -1 )
       return -1;
-    stackbase[(*stkSizePtr)++] = "d";
     stackbase[(*stkSizePtr)++] = "D";
+    stackbase[(*stkSizePtr)++] = "d";
     if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
 	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
       return -1;
@@ -598,8 +598,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
   case 0x35: // saload
     // im fairly certain the array type for all of these is A[I
     if ( checkStackUnderflow(*stkSizePtr, 2) == -1 ||
-	 compareReferenceTypes(stackbase[*stkSizePtr - 1], "A[I") == -1 ||
-	 compareSimpleTypes(stackbase[*stkSizePtr - 2], "I") == -1 )
+	 compareReferenceTypes(stackbase[*stkSizePtr - 2], "A[I") == -1 ||
+	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "I") == -1 )
 	 return -1;
     stackbase[--(*stkSizePtr)] = "-"; // pop the A, keep the I and we are golden
     if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
@@ -609,11 +609,11 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 
   case 0x2f: // laload
     if ( checkStackUnderflow(*stkSizePtr, 2) == -1 ||
-	 compareReferenceTypes(stackbase[*stkSizePtr - 1], "A[Ll") == -1 ||
-	 compareSimpleTypes(stackbase[*stkSizePtr - 2], "I") == -1 )
+	 compareReferenceTypes(stackbase[*stkSizePtr - 2], "A[Ll") == -1 ||
+	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "I") == -1 )
 	 return -1;
-    stackbase[*stkSizePtr - 1] = "L";
-    stackbase[*stkSizePtr - 2] = "l";
+    stackbase[*stkSizePtr - 2] = "L";
+    stackbase[*stkSizePtr - 1] = "l";
     if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
 	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
       return -1;
@@ -621,8 +621,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 
   case 0x30: // faload
     if ( checkStackUnderflow(*stkSizePtr, 2) == -1 ||
-	 compareReferenceTypes(stackbase[*stkSizePtr - 1], "A[F") == -1 ||
-	 compareSimpleTypes(stackbase[*stkSizePtr - 2], "I") == -1 )
+	 compareReferenceTypes(stackbase[*stkSizePtr - 2], "A[F") == -1 ||
+	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "I") == -1 )
 	 return -1;
     stackbase[--(*stkSizePtr)] = "-";
     stackbase[*stkSizePtr - 1] = "F";
@@ -633,11 +633,11 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 
   case 0x31: // daload
     if ( checkStackUnderflow(*stkSizePtr, 2) == -1 ||
-	 compareReferenceTypes(stackbase[*stkSizePtr - 1], "A[Dd") == -1 ||
-	 compareSimpleTypes(stackbase[*stkSizePtr - 2], "I") == -1 )
+	 compareReferenceTypes(stackbase[*stkSizePtr - 2], "A[Dd") == -1 ||
+	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "I") == -1 )
 	 return -1;
-    stackbase[*stkSizePtr - 1] = "D";
-    stackbase[*stkSizePtr - 2] = "d";
+    stackbase[*stkSizePtr - 2] = "D";
+    stackbase[*stkSizePtr - 1] = "d";
     if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
 	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
       return -1;
@@ -645,8 +645,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 
   case 0x32: // aaload
     if ( checkStackUnderflow(*stkSizePtr, 2) == -1 ||
-	 compareReferenceTypes(stackbase[*stkSizePtr - 1], "A[A") == -1 ||
-	 compareSimpleTypes(stackbase[*stkSizePtr - 2], "I") == -1 )
+	 compareReferenceTypes(stackbase[*stkSizePtr - 2], "A[A") == -1 ||
+	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "I") == -1 )
 	 return -1;
     // chop the A[ off the type, should really do a strdup here.. and everywhere actually
     stackbase[*stkSizePtr - 2] = &stackbase[*stkSizePtr - 1][2];
@@ -674,8 +674,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     varnum = m->code[ipos+1];
     if ( checkStackUnderflow(*stkSizePtr, 2) == -1 ||
 	 checkInLocalsRange(varnum, m->max_locals) == -1 ||
-	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "L") == -1 ||
-	 compareSimpleTypes(stackbase[*stkSizePtr - 2], "l") == -1 )
+	 compareSimpleTypes(stackbase[*stkSizePtr - 2], "L") == -1 ||
+	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "l") == -1 )
       return -1;
     stackbase[--(*stkSizePtr)] = "-"; // basically pop the L
     stackbase[--(*stkSizePtr)] = "-"; // and l
@@ -703,8 +703,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     varnum = m->code[ipos+1];
     if ( checkStackUnderflow(*stkSizePtr, 2) == -1 ||
 	 checkInLocalsRange(varnum, m->max_locals) == -1 ||
-	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "D") == -1 ||
-	 compareSimpleTypes(stackbase[*stkSizePtr - 2], "d") == -1 )
+	 compareSimpleTypes(stackbase[*stkSizePtr - 2], "D") == -1 ||
+	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "d") == -1 )
       return -1;
     stackbase[--(*stkSizePtr)] = "-"; // pop the D
     stackbase[--(*stkSizePtr)] = "-"; // pop the d
@@ -749,8 +749,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
   case 0x42: // lstore_3
     varnum = op - 0x3f;
     if ( checkStackUnderflow(*stkSizePtr, 2) == -1 ||
-	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "L") == -1 ||
-	 compareSimpleTypes(stackbase[*stkSizePtr - 2], "l") == -1 )
+	 compareSimpleTypes(stackbase[*stkSizePtr - 2], "L") == -1 ||
+	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "l") == -1 )
       return -1;
     stackbase[--(*stkSizePtr)] = "-"; // pop the L
     stackbase[--(*stkSizePtr)] = "-"; // pop the l
@@ -781,8 +781,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
   case 0x4a: // dstore_3
     varnum = op - 0x47;
     if ( checkStackUnderflow(*stkSizePtr, 2) == -1 ||
-	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "D") == -1 ||
-	 compareSimpleTypes(stackbase[*stkSizePtr - 2], "d") == -1 )
+	 compareSimpleTypes(stackbase[*stkSizePtr - 2], "D") == -1 ||
+	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "d") == -1 )
       return -1;
     stackbase[--(*stkSizePtr)] = "-"; // pop the D
     stackbase[--(*stkSizePtr)] = "-"; // pop the d
@@ -813,9 +813,9 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
   case 0x55: // castore
   case 0x56: // sastore
     if ( checkStackUnderflow(*stkSizePtr, 3) == -1 ||
-	 compareReferenceTypes(stackbase[*stkSizePtr - 1], "A[I") == -1 ||
+	 compareReferenceTypes(stackbase[*stkSizePtr - 3], "A[I") == -1 ||
 	 compareSimpleTypes(stackbase[*stkSizePtr - 2], "I") == -1 ||
-	 compareSimpleTypes(stackbase[*stkSizePtr - 3], "I") == -1 )
+	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "I") == -1 )
       return -1;
     stackbase[--(*stkSizePtr)] = "-";
     stackbase[--(*stkSizePtr)] = "-";
@@ -827,10 +827,10 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 
   case 0x50: // lastore
     if ( checkStackUnderflow(*stkSizePtr, 4) == -1 ||
-	 compareReferenceTypes(stackbase[*stkSizePtr - 1], "A[Ll") == -1 ||
-	 compareSimpleTypes(stackbase[*stkSizePtr - 2], "I") == -1 ||
-	 compareSimpleTypes(stackbase[*stkSizePtr - 3], "L") == -1 ||
-	 compareSimpleTypes(stackbase[*stkSizePtr - 4], "l") == -1 )
+	 compareReferenceTypes(stackbase[*stkSizePtr - 4], "A[Ll") == -1 ||
+	 compareSimpleTypes(stackbase[*stkSizePtr - 3], "I") == -1 ||
+	 compareSimpleTypes(stackbase[*stkSizePtr - 2], "L") == -1 ||
+	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "l") == -1 )
       return -1;
     stackbase[--(*stkSizePtr)] = "-";
     stackbase[--(*stkSizePtr)] = "-";
@@ -843,9 +843,9 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 
   case 0x51: // fastore
     if ( checkStackUnderflow(*stkSizePtr, 3) == -1 ||
-	 compareReferenceTypes(stackbase[*stkSizePtr - 1], "A[F") == -1 ||
+	 compareReferenceTypes(stackbase[*stkSizePtr - 3], "A[F") == -1 ||
 	 compareSimpleTypes(stackbase[*stkSizePtr - 2], "I") == -1 ||
-	 compareSimpleTypes(stackbase[*stkSizePtr - 3], "F") == -1 )
+	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "F") == -1 )
       return -1;
     stackbase[--(*stkSizePtr)] = "-";
     stackbase[--(*stkSizePtr)] = "-";
@@ -857,10 +857,10 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 
   case 0x52: // dastore
     if ( checkStackUnderflow(*stkSizePtr, 4) == -1 ||
-	 compareReferenceTypes(stackbase[*stkSizePtr - 1], "A[Dd") == -1 ||
-	 compareSimpleTypes(stackbase[*stkSizePtr - 2], "I") == -1 ||
-	 compareSimpleTypes(stackbase[*stkSizePtr - 3], "D") == -1 ||
-	 compareSimpleTypes(stackbase[*stkSizePtr - 4], "d") == -1 )
+	 compareReferenceTypes(stackbase[*stkSizePtr - 4], "A[Dd") == -1 ||
+	 compareSimpleTypes(stackbase[*stkSizePtr - 3], "I") == -1 ||
+	 compareSimpleTypes(stackbase[*stkSizePtr - 2], "D") == -1 ||
+	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "d") == -1 )
       return -1;
     stackbase[--(*stkSizePtr)] = "-";
     stackbase[--(*stkSizePtr)] = "-";
@@ -873,8 +873,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 
   case 0x53: // aastore
     if ( checkStackUnderflow(*stkSizePtr, 3) == -1 ||
-	 compareReferenceTypes(stackbase[*stkSizePtr - 1], "A[A") == -1 ||
-	 compareSimpleTypes(stackbase[*stkSizePtr - 2], "I") == -1 )
+	 compareReferenceTypes(stackbase[*stkSizePtr - 2], "A[A") == -1 ||
+	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "I") == -1 )
 	// compareReferenceTypes(stackbase[*stkSizePtr - 3], // should use lub function here
 	//		       &stackbase[*stkSizePtr - 3][2]) == -1 )
       return -1;
@@ -1031,10 +1031,10 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
   case 0x83: // lxor
     // do we have 4 vals
     if ( checkStackUnderflow(*stkSizePtr, 4) == -1 ||
-	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "L") == -1 || 
-	 compareSimpleTypes(stackbase[*stkSizePtr - 2], "l") == -1 ||
-	 compareSimpleTypes(stackbase[*stkSizePtr - 3], "L") == -1 ||
-	 compareSimpleTypes(stackbase[*stkSizePtr - 4], "l") == -1 )
+	 compareSimpleTypes(stackbase[*stkSizePtr - 4], "L") == -1 || 
+	 compareSimpleTypes(stackbase[*stkSizePtr - 3], "l") == -1 ||
+	 compareSimpleTypes(stackbase[*stkSizePtr - 2], "L") == -1 ||
+	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "l") == -1 )
       return -1;
     stackbase[--(*stkSizePtr)] = "-"; // just pop an L
     stackbase[--(*stkSizePtr)] = "-"; // and the l
@@ -1050,8 +1050,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
   case 0x72: // frem
     // do we have 2 vals
     if ( checkStackUnderflow(*stkSizePtr, 2) == -1 ||
-	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "F") == -1 || 
-	 compareSimpleTypes(stackbase[*stkSizePtr - 2], "F") == -1 )
+	 compareSimpleTypes(stackbase[*stkSizePtr - 2], "F") == -1 || 
+	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "F") == -1 )
       return -1;
     stackbase[--(*stkSizePtr)] = "-";
     if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
@@ -1066,10 +1066,10 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
   case 0x73: // drem
     // do we have 4 vals
     if ( checkStackUnderflow(*stkSizePtr, 4) == -1 ||
-	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "D") == -1 || 
-	 compareSimpleTypes(stackbase[*stkSizePtr - 2], "d") == -1 ||
-	 compareSimpleTypes(stackbase[*stkSizePtr - 3], "D") == -1 ||
-	 compareSimpleTypes(stackbase[*stkSizePtr - 4], "d") == -1 )
+	 compareSimpleTypes(stackbase[*stkSizePtr - 4], "D") == -1 || 
+	 compareSimpleTypes(stackbase[*stkSizePtr - 3], "d") == -1 ||
+	 compareSimpleTypes(stackbase[*stkSizePtr - 2], "D") == -1 ||
+	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "d") == -1 )
       return -1;
     stackbase[--(*stkSizePtr)] = "-";
     stackbase[--(*stkSizePtr)] = "-";
@@ -1092,8 +1092,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 
   case 0x75: // lneg
     if ( checkStackUnderflow(*stkSizePtr, 2) == -1 ||
-	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "L") == -1 ||
-	 compareSimpleTypes(stackbase[*stkSizePtr - 2], "l") == -1 )
+	 compareSimpleTypes(stackbase[*stkSizePtr - 2], "L") == -1 ||
+	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "l") == -1 )
       return -1;
     if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
 	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
@@ -1111,8 +1111,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 
   case 0x77: // dneg
     if ( checkStackUnderflow(*stkSizePtr, 2) == -1 ||
-	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "D") == -1 ||
-	 compareSimpleTypes(stackbase[*stkSizePtr - 2], "d") == -1 )
+	 compareSimpleTypes(stackbase[*stkSizePtr - 2], "D") == -1 ||
+	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "d") == -1 )
       return -1;
     if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
 	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
@@ -1135,8 +1135,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 	 checkStackOverflow(*stkSizePtr, 2, m->max_stack) == -1 ||
 	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "I") == -1 )
       return -1;
-    stackbase[(*stkSizePtr) - 1] = "l"; // overwrite the old stack ele
-    stackbase[(*stkSizePtr)++] = "L"; // and add a new one
+    stackbase[(*stkSizePtr) - 1] = "L"; // overwrite the old stack ele
+    stackbase[(*stkSizePtr)++] = "l"; // and add a new one
     if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
 	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
       return -1;
@@ -1157,8 +1157,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 	 checkStackOverflow(*stkSizePtr, 2, m->max_stack) == -1 ||
 	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "I") == -1 )
       return -1;
-    stackbase[(*stkSizePtr) - 1] = "d";
-    stackbase[(*stkSizePtr)++] = "D";
+    stackbase[(*stkSizePtr) - 1] = "D";
+    stackbase[(*stkSizePtr)++] = "d";
     if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
 	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
       return -1;
@@ -1166,27 +1166,27 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 
   case 0x88: // l2i
     if ( checkStackUnderflow(*stkSizePtr, 2) == -1 ||
-	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "L") == -1 ||
-	 compareSimpleTypes(stackbase[*stkSizePtr - 2], "l") == -1 )
+	 compareSimpleTypes(stackbase[*stkSizePtr - 2], "L") == -1 ||
+	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "l") == -1 )
       return -1;
     stackbase[--(*stkSizePtr)] = "-"; // pop the L
     stackbase[(*stkSizePtr) - 1] = "I"; // change the l to an I
 
   case 0x89: // l2f
     if ( checkStackUnderflow(*stkSizePtr, 2) == -1 ||
-	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "L") == -1 ||
-	 compareSimpleTypes(stackbase[*stkSizePtr - 2], "l") == -1 )
+	 compareSimpleTypes(stackbase[*stkSizePtr - 2], "L") == -1 ||
+	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "l") == -1 )
       return -1;
     stackbase[--(*stkSizePtr)] = "-";
     stackbase[(*stkSizePtr) - 1] = "F"; // change the l to an F
 
   case 0x8a: // l2d
     if ( checkStackUnderflow(*stkSizePtr, 2) == -1 ||
-	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "L") == -1 ||
-	 compareSimpleTypes(stackbase[*stkSizePtr - 2], "l") == -1 )
+	 compareSimpleTypes(stackbase[*stkSizePtr - 2], "L") == -1 ||
+	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "l") == -1 )
       return -1;
-    stackbase[(*stkSizePtr) - 1] = "D"; // change L to D
-    stackbase[(*stkSizePtr) - 2] = "d"; // and l to d
+    stackbase[(*stkSizePtr) - 1] = "d"; // change L to D
+    stackbase[(*stkSizePtr) - 2] = "D"; // and l to d
 
   case 0x8b: // f2i
     if ( checkStackUnderflow(*stkSizePtr, 1) == -1 ||
@@ -1203,8 +1203,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 	 checkStackOverflow(*stkSizePtr, 2, m->max_stack) == -1 ||
 	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "F") == -1 )
       return -1;
-    stackbase[(*stkSizePtr) - 1] = "l"; // overwrite the old stack ele
-    stackbase[(*stkSizePtr)++] = "L"; // and add a new one
+    stackbase[(*stkSizePtr) - 1] = "L"; // overwrite the old stack ele
+    stackbase[(*stkSizePtr)++] = "l"; // and add a new one
     if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
 	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
       return -1;
@@ -1215,8 +1215,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 	 checkStackOverflow(*stkSizePtr, 2, m->max_stack) == -1 ||
 	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "F") == -1 )
       return -1;
-    stackbase[(*stkSizePtr) - 1] = "d"; // overwrite the old stack ele
-    stackbase[(*stkSizePtr)++] = "D"; // and add a new one
+    stackbase[(*stkSizePtr) - 1] = "D"; // overwrite the old stack ele
+    stackbase[(*stkSizePtr)++] = "d"; // and add a new one
     if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
 	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
       return -1;
@@ -1224,8 +1224,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 
   case 0x8e: // d2i
     if ( checkStackUnderflow(*stkSizePtr, 2) == -1 ||
-	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "D") == -1 ||
-	 compareSimpleTypes(stackbase[*stkSizePtr - 2], "d") == -1 )
+	 compareSimpleTypes(stackbase[*stkSizePtr - 2], "D") == -1 ||
+	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "d") == -1 )
       return -1;
     stackbase[--(*stkSizePtr)] = "-"; // pop the D
     stackbase[(*stkSizePtr) - 1] = "I"; // change the d to an I
@@ -1236,11 +1236,11 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 
   case 0x8f: // d2l
     if ( checkStackUnderflow(*stkSizePtr, 2) == -1 ||
-	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "D") == -1 ||
-	 compareSimpleTypes(stackbase[*stkSizePtr - 2], "d") == -1 )
+	 compareSimpleTypes(stackbase[*stkSizePtr - 2], "D") == -1 ||
+	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "d") == -1 )
       return -1;
-    stackbase[(*stkSizePtr) - 1] = "L"; // change D to L
-    stackbase[(*stkSizePtr) - 2] = "l"; // and d to l
+    stackbase[(*stkSizePtr) - 1] = "l"; // change D to L
+    stackbase[(*stkSizePtr) - 2] = "L"; // and d to l
     if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
 	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
       return -1;
@@ -1248,8 +1248,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 
   case 0x90: // d2f
     if ( checkStackUnderflow(*stkSizePtr, 2) == -1 ||
-	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "D") == -1 ||
-	 compareSimpleTypes(stackbase[*stkSizePtr - 2], "d") == -1 )
+	 compareSimpleTypes(stackbase[*stkSizePtr - 2], "D") == -1 ||
+	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "d") == -1 )
       return -1;
     stackbase[--(*stkSizePtr)] = "-"; // pop the L
     stackbase[(*stkSizePtr) - 1] = "F"; // change the l to an F
@@ -1260,10 +1260,10 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 
   case 0x94: // lcmp
     if ( checkStackUnderflow(*stkSizePtr, 4) == -1 ||
-	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "L") == -1 || 
-	 compareSimpleTypes(stackbase[*stkSizePtr - 2], "l") == -1 || 
-	 compareSimpleTypes(stackbase[*stkSizePtr - 3], "L") == -1 || 
-	 compareSimpleTypes(stackbase[*stkSizePtr - 4], "l") == -1 )
+	 compareSimpleTypes(stackbase[*stkSizePtr - 4], "L") == -1 || 
+	 compareSimpleTypes(stackbase[*stkSizePtr - 3], "l") == -1 || 
+	 compareSimpleTypes(stackbase[*stkSizePtr - 2], "L") == -1 || 
+	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "l") == -1 )
       return -1;
     stackbase[--(*stkSizePtr)] = "-"; // pop the L
     stackbase[--(*stkSizePtr)] = "-"; // l
@@ -1277,8 +1277,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
   case 0x95: // fcmpl
   case 0x96: // fcmpg
     if ( checkStackUnderflow(*stkSizePtr, 2) == -1 ||
-	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "F") == -1 || 
-	 compareSimpleTypes(stackbase[*stkSizePtr - 2], "F") == -1 )
+	 compareSimpleTypes(stackbase[*stkSizePtr - 2], "F") == -1 || 
+	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "F") == -1 )
       return -1;
     stackbase[--(*stkSizePtr)] = "-"; // pop 
     stackbase[(*stkSizePtr) - 1] = "I"; // convert the F to an I
@@ -1290,10 +1290,10 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
   case 0x97: // dcmpl
   case 0x98: // dcmpg
     if ( checkStackUnderflow(*stkSizePtr, 4) == -1 ||
-	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "D") == -1 || 
-	 compareSimpleTypes(stackbase[*stkSizePtr - 2], "d") == -1 || 
-	 compareSimpleTypes(stackbase[*stkSizePtr - 3], "D") == -1 || 
-	 compareSimpleTypes(stackbase[*stkSizePtr - 4], "d") == -1 )
+	 compareSimpleTypes(stackbase[*stkSizePtr - 4], "D") == -1 || 
+	 compareSimpleTypes(stackbase[*stkSizePtr - 3], "d") == -1 || 
+	 compareSimpleTypes(stackbase[*stkSizePtr - 2], "D") == -1 || 
+	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "d") == -1 )
       return -1;
     stackbase[--(*stkSizePtr)] = "-";
     stackbase[--(*stkSizePtr)] = "-";
@@ -1444,8 +1444,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
   case 0xad: // lreturn
     if ( checkStackUnderflow(*stkSizePtr, 2) == -1 ||
 	 compareSimpleTypes(retType, "Ll") == -1 ||
-	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "L") == -1 ||
-	 compareSimpleTypes(stackbase[*stkSizePtr - 2], "l") == -1 )
+	 compareSimpleTypes(stackbase[*stkSizePtr - 2], "L") == -1 ||
+	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "l") == -1 )
       return -1;
     break;
 
@@ -1459,8 +1459,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
   case 0xaf: // dreturn
     if ( checkStackUnderflow(*stkSizePtr, 2) == -1 ||
 	 compareSimpleTypes(retType, "Dd") == -1 ||
-	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "D") == -1 ||
-	 compareSimpleTypes(stackbase[*stkSizePtr - 2], "d") == -1 )
+	 compareSimpleTypes(stackbase[*stkSizePtr - 2], "D") == -1 ||
+	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "d") == -1 )
       return -1;
     break;
 
@@ -1487,11 +1487,11 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     tmpStr = SafeStrdup(strchr(GetCPItemAsString(cf, varnum), ':') + 1);
     // Push field value on stack
     if( strcmp(tmpStr, "D") == 0 ) {
-      stackbase[(*stkSizePtr)++] = "d";
       stackbase[(*stkSizePtr)++] = "D";
+      stackbase[(*stkSizePtr)++] = "d";
     } else if ( strcmp(tmpStr, "J") == 0 ) {
-      stackbase[(*stkSizePtr)++] = "l";
       stackbase[(*stkSizePtr)++] = "L";
+      stackbase[(*stkSizePtr)++] = "l";
     } else
       stackbase[(*stkSizePtr)++] = SafeStrdup(tmpStr);
       SafeFree(tmpStr);
@@ -1512,11 +1512,11 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     stackbase[--(*stkSizePtr)] = "-";
     // Push field value on stack
     if( strcmp(tmpStr, "D") == 0 ) {
-      stackbase[(*stkSizePtr)++] = "d";
       stackbase[(*stkSizePtr)++] = "D";
+      stackbase[(*stkSizePtr)++] = "d";
     } else if ( strcmp(tmpStr, "J") == 0 ) {
-      stackbase[(*stkSizePtr)++] = "l";
       stackbase[(*stkSizePtr)++] = "L";
+      stackbase[(*stkSizePtr)++] = "l";
     } else
       stackbase[(*stkSizePtr)++] = SafeStrdup(tmpStr);
     SafeFree(tmpStr);
@@ -1531,17 +1531,17 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     tmpStr = SafeStrdup(strchr(GetCPItemAsString(cf, varnum), ':') + 1);
     // Pop arguments off the stack (pop two spots if Dd or Ll)
     if(strcmp(tmpStr, "D") == 0 ) { // double
-      if(compareSimpleTypes("D", stackbase[(*stkSizePtr) - 1]) == -1)
+      if(compareSimpleTypes("d", stackbase[(*stkSizePtr) - 1]) == -1)
         return -1;
-      if(compareSimpleTypes("d", stackbase[(*stkSizePtr) - 2]) == -1)
+      if(compareSimpleTypes("D", stackbase[(*stkSizePtr) - 2]) == -1)
         return -1;
       stackbase[--(*stkSizePtr)] = "-";
       stackbase[--(*stkSizePtr)] = "-";
     }
     else if(strcmp(tmpStr, "J") == 0) { // long
-      if(compareSimpleTypes("L", stackbase[(*stkSizePtr) - 1]) == -1)
+      if(compareSimpleTypes("l", stackbase[(*stkSizePtr) - 1]) == -1)
         return -1;
-      if(compareSimpleTypes("l", stackbase[(*stkSizePtr) - 2]) == -1)
+      if(compareSimpleTypes("L", stackbase[(*stkSizePtr) - 2]) == -1)
         return -1;
       stackbase[--(*stkSizePtr)] = "-";
       stackbase[--(*stkSizePtr)] = "-";
@@ -1581,12 +1581,12 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     // If the return type is not void (-), push it on the stack
     if(strcmp(tmpRets[0], "-") != 0) {
       if(strcmp(tmpRets[0], "Dd") == 0) {
-        stackbase[(*stkSizePtr)++] = "d";
         stackbase[(*stkSizePtr)++] = "D";
+        stackbase[(*stkSizePtr)++] = "d";
       }
       else if(strcmp(tmpRets[0], "Ll") == 0) {
-        stackbase[(*stkSizePtr)++] = "l";
         stackbase[(*stkSizePtr)++] = "L";
+        stackbase[(*stkSizePtr)++] = "l";
       }
       else
         stackbase[(*stkSizePtr)++] = SafeStrdup(tmpRets[0]);
@@ -1616,7 +1616,7 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     varnum = m->code[ipos+1];
     if ( checkStackUnderflow(*stkSizePtr, 1) == -1 ||
 	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "I") == -1 )
-      return -1;
+      return -1;    
     switch (varnum) {
     case 4: // bool
     case 5: // char
@@ -1624,12 +1624,16 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     case 9: // short
     case 10: // int
       stackbase[*stkSizePtr - 1] = "A[I";
+      break;
     case 6: // float
       stackbase[*stkSizePtr - 1] = "A[F";
+      break;
     case 7: // double
       stackbase[*stkSizePtr - 1] = "A[Dd";
+      break;
     case 11: // long
-      stackbase[*stkSizePtr - 1] = "A[Ll"; 
+      stackbase[*stkSizePtr - 1] = "A[Ll";
+      break;
     default:
       return -1;
     }
@@ -1815,20 +1819,20 @@ static void verifyMethod( ClassFile *cf, method_info *m ) {
     // printTypeCodesArray(initState, m, name);
 
     do {
-      if (tracingExecution & TRACE_VERIFY) {
-	fprintf(stdout, "Instruction %d %s:\n", ipos, opcodes[m->code[ipos]].opcodeName);
-	fprintf(stdout, "Pre Instruction ");
-	printInstructionInfo(&itable[ipos], m->max_locals, m->max_stack);
-      }
+      //if (tracingExecution & TRACE_VERIFY) {
+    fprintf(stdout, "Instruction %d %s:\n", ipos, opcodes[m->code[ipos]].opcodeName);
+	//fprintf(stdout, "Pre Instruction ");
+	//printInstructionInfo(&itable[ipos], m->max_locals, m->max_stack);
+      //}
 
 	if ( verifyOpcode(itable, cf, m, ipos, retType) == -1 ) {
 	fprintf(stdout, "Verification Failed at instruction %d : %s\n", ipos, opcodes[m->code[ipos]].opcodeName);
 	exit(-1);
       }
-	//if (tracingExecution & TRACE_VERIFY) {
-	//fprintf(stdout, "Post Instruction ");
-	//printInstructionInfo(&itable[ipos], m->max_locals, m->max_stack);
-	//}
+	if (tracingExecution & TRACE_VERIFY) {
+	fprintf(stdout, "Post Instruction ");
+	printInstructionInfo(&itable[ipos], m->max_locals, m->max_stack);
+	}
 
     } while ( (ipos = findChangedInstruction(itable, ipos, m->code_length)) != -1 );
 
