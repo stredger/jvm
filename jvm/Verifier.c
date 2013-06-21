@@ -27,6 +27,9 @@ static void printTypeCodesArray( char **vstate, method_info *m, char *name ) {
 }
 */
 
+
+// Prints all the values in the constant Pool
+//  much like the javap -c -verbose options would
 static void printConstantPool(ClassFile *cf) {
   char *cptypes[] = {"Unknown", "Asciz", "", "Integer", "Float",
 		     "Long", "Double", "Class", "String","Field",
@@ -41,7 +44,7 @@ static void printConstantPool(ClassFile *cf) {
   }
 }
 
-
+// Prints all the instructions (and some non code places)
 static void printAllInstructions(method_info *m, char *name) {
   int i;
   if (name == NULL)
@@ -57,6 +60,7 @@ static void printAllInstructions(method_info *m, char *name) {
 }
 
 
+// prints the stacksize, cbit, local variables, and stack of the instruction
 static void printInstructionInfo(InstructionInfo *iinfo, int localslen, int stacklen) {
   int j;
   char **vstate = iinfo->state;
@@ -72,32 +76,18 @@ static void printInstructionInfo(InstructionInfo *iinfo, int localslen, int stac
   fprintf(stdout, ")\n");
 }
 
-/*
-static char **createInitialState(int localslen, int stacklen) {
-  int i, size = localslen + stacklen;
-  char **s2 = (char **) SafeMalloc( (stacklen + localslen) * sizeof(char **) );
 
-  for( i = 0;  i < localslen;  i++ )
-    s2[i] = "U";
-  while(i < size)
-    s2[i++] = "-";
-  return s2;
-}
-*/
-
+// create storage for an instruction and set the cbit of the first instruction to 1
 static InstructionInfo *createInstructionTable(method_info *m, char** initState) {
   InstructionInfo *itable = (InstructionInfo*) SafeCalloc(m->code_length, sizeof(InstructionInfo));
-  //int i;
   itable[0].cbit = 1;
   itable[0].state = initState;
-  //for (i = 1; i < m->code_length; i++) {
-  //  itable[i].state = (m->code[i] > LASTOPCODE || m->code[i] == 0) ? 
-  //    NULL : createInitialState(m->max_locals, m->max_stack);
-  //}
   return itable;
 }
 
 
+// copy all the locals and stack entries into a new state
+//  WARNING: this causes mad memory leaks...
 static char **copyState(char **s1, int len) {
   int i;
   char **s2 = (char **) SafeMalloc(len * sizeof(char **));
@@ -107,6 +97,7 @@ static char **copyState(char **s1, int len) {
 }
 
 
+// duplicate an instruction entry but set the cbit to 1
 static void dupInstructionInfo(InstructionInfo *oldi, InstructionInfo *newi, int typeArrayLen) {
   newi->cbit = 1;
   newi->state = copyState(oldi->state, typeArrayLen);
@@ -123,7 +114,7 @@ static int isSimpleType(char *t) {
 }
 
 
-
+// Merge types t1 and t2
 static char *mergeTypes(char *t1, char*t2) {
 
   if ( strcmp(t1, t2) == 0 ) // t & t => t
@@ -149,11 +140,11 @@ static char *mergeTypes(char *t1, char*t2) {
 }
 
 
-
+// merge the stack, and locals for two instructions
 static int mergeState(InstructionInfo* oldi, InstructionInfo* newi, int typeArrLen) {
   fflush(stdout);
   if ( oldi->stksize != newi->stksize ) {
-    fprintf(stdout, "Stack heights don't match: %d =/= %d\n", oldi->stksize, newi->stksize);
+    fprintf(stderr, "Stack heights don't match: %d =/= %d\n", oldi->stksize, newi->stksize);
     return -1;
   }
   int i;
@@ -168,6 +159,7 @@ static int mergeState(InstructionInfo* oldi, InstructionInfo* newi, int typeArrL
 }
 
 
+// find an instruction that has its cbit set to one
 static int findChangedInstruction(InstructionInfo *itable, int ipos, int imax) {
   int numchecked = 0;
   while (numchecked < imax) {
@@ -185,49 +177,62 @@ static int findChangedInstruction(InstructionInfo *itable, int ipos, int imax) {
 }
 
 
+// return -1 if the stack will overflow (size greater than max) 
+//  when we add toPush, 0 otherwise
 static int checkStackOverflow(int stksize, int toPush,  int max) {
   if (stksize + toPush > max) {
-    fprintf(stdout, "Stack Overflow!\n");
+    fprintf(stderr, "Stack Overflow!\n");
     return -1;
   }
   return 0;
 }
 
-
+// return -1 if the stack will underflow (size less than zero) 
+//  when we subtract toPop, 0 otherwise
 static int checkStackUnderflow(int stksize, int toPop) {
   if (stksize - toPop < 0) {
-    fprintf(stdout, "Stack Underflow!\n");
+    fprintf(stderr, "Stack Underflow!\n");
     return -1;
   }
   return 0;
 }
 
 
+// check if the index ind is in the constant pool range,
+//  returns -1 if not, 0 otherwise
 static int checkInCPRange(int cprange, int ind) {
   if (cprange < ind) {
-    fprintf(stdout, "Constant pool index out of range, max:%d, tried: %d\n", cprange - 1, ind);
+    fprintf(stderr, "Constant pool index out of range, max:%d, tried: %d\n", cprange - 1, ind);
     return -1;
   }
   return 0;
 }
 
+// Checks if the constant tag is a valid constant pool type
+//  returns -1 if invalid, 0 otherwise
 static int checkValidConstantType(int type) {
   if (type == 0 || type == 2 || type > 12) {
-    fprintf(stdout, "Invalid constant type code: %d\n", type);
+    fprintf(stderr, "Invalid constant type code: %d\n", type);
     return -1;
   }
   return 0;
 }
 
+
+// checks if the actual type is equal to our expected type
+//  returns -1 if not equal, 0 otherwise
 static int checkCPType(int actualType, int expType) {
   // check valid first?
   if ( actualType != expType ) {
-    fprintf(stdout, "Constant pool type mismatch, got: %d, expected: %d\n", actualType, expType);
+    fprintf(stderr, "Constant pool type mismatch, got: %d, expected: %d\n", actualType, expType);
     return -1;
   }
   return 0;
 }
 
+
+// either merges or creates a new entry for the itable
+//  returns -1 if merging failed, 0 otherwise
 static int updateInstruction(InstructionInfo *icurr, InstructionInfo *inext, int typeArrSize) {
   if (inext->state) {
       // merge the states, stacks, and bears. Oh my!
@@ -239,6 +244,8 @@ static int updateInstruction(InstructionInfo *icurr, InstructionInfo *inext, int
 }
 
 
+// compares two entire strings. returns 0 if they are equal
+//  -1 otherwise
 static int compareSimpleTypes(char* t1, char *t2) {
   if ( strcmp(t1, t2) ) {
     fprintf(stdout, "Type mismatch:  %s =/= %s\n", t1, t2);
@@ -248,6 +255,8 @@ static int compareSimpleTypes(char* t1, char *t2) {
 }
 
 
+// compares two strings up to the max length of the shortest string
+//  returns -1 if the smaller string is a substring, 0 otherwise
 static int compareReferenceTypes(char *t1, char *t2) {
   int i;
   for (i = 0; t1[i] != '\0' && t2[i] != '\0'; i++) {
@@ -259,6 +268,9 @@ static int compareReferenceTypes(char *t1, char *t2) {
   return 0;
 }
 
+
+// checks if the local at varnum is within our max number of locals
+//  returns -1 if not in range, 0 otherwise
 static int checkInLocalsRange(int varnum, int max) {
   if (varnum >= max) {
     fprintf(stdout, "Local var out of range, tried: %d max:%d\n", varnum, max-1);
@@ -268,6 +280,8 @@ static int checkInLocalsRange(int varnum, int max) {
 }
 
 
+// hmm exact same function as above actually, different name and use case though
+//  returns -1 if pos is out of the max instruction range imax, 0 otherwise
 static int checkCodePosition(int pos, int imax) {
   if (pos >= imax) {
     fprintf(stdout, "Code position out of range, tried: %d max:%d\n", pos, imax-1);
@@ -277,6 +291,10 @@ static int checkCodePosition(int pos, int imax) {
 }
 
 
+// Takes an opcode and performs verification on it based on the current state of the JVM.
+//  State is represented by the InstructionInfo struct which holds the types of all 
+//  the locals and the stack. The current instructions state is indexed by ipos (so itable[ipos])
+//  Verification failure returns -1, 0 otherwise
 static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, int ipos, char *retType) {
 
   int op = m->code[ipos];
@@ -1171,6 +1189,10 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
       return -1;
     stackbase[--(*stkSizePtr)] = "-"; // pop the L
     stackbase[(*stkSizePtr) - 1] = "I"; // change the l to an I
+    if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+      return -1;
+    break;
 
   case 0x89: // l2f
     if ( checkStackUnderflow(*stkSizePtr, 2) == -1 ||
@@ -1179,6 +1201,10 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
       return -1;
     stackbase[--(*stkSizePtr)] = "-";
     stackbase[(*stkSizePtr) - 1] = "F"; // change the l to an F
+    if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+      return -1;
+    break;
 
   case 0x8a: // l2d
     if ( checkStackUnderflow(*stkSizePtr, 2) == -1 ||
@@ -1187,6 +1213,10 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
       return -1;
     stackbase[(*stkSizePtr) - 1] = "D"; // change L to D
     stackbase[(*stkSizePtr) - 2] = "d"; // and l to d
+    if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+      return -1;
+    break;
 
   case 0x8b: // f2i
     if ( checkStackUnderflow(*stkSizePtr, 1) == -1 ||
@@ -1531,17 +1561,15 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     tmpStr = SafeStrdup(strchr(GetCPItemAsString(cf, varnum), ':') + 1);
     // Pop arguments off the stack (pop two spots if Dd or Ll)
     if(strcmp(tmpStr, "D") == 0 ) { // double
-      if(compareSimpleTypes("D", stackbase[(*stkSizePtr) - 1]) == -1)
-        return -1;
-      if(compareSimpleTypes("d", stackbase[(*stkSizePtr) - 2]) == -1)
+      if(compareSimpleTypes("D", stackbase[(*stkSizePtr) - 1]) == -1 ||
+	 compareSimpleTypes("d", stackbase[(*stkSizePtr) - 2]) == -1)
         return -1;
       stackbase[--(*stkSizePtr)] = "-";
       stackbase[--(*stkSizePtr)] = "-";
     }
     else if(strcmp(tmpStr, "J") == 0) { // long
-      if(compareSimpleTypes("L", stackbase[(*stkSizePtr) - 1]) == -1)
-        return -1;
-      if(compareSimpleTypes("l", stackbase[(*stkSizePtr) - 2]) == -1)
+      if(compareSimpleTypes("L", stackbase[(*stkSizePtr) - 1]) == -1 ||
+	 compareSimpleTypes("l", stackbase[(*stkSizePtr) - 2]) == -1 )
         return -1;
       stackbase[--(*stkSizePtr)] = "-";
       stackbase[--(*stkSizePtr)] = "-";
@@ -1822,7 +1850,7 @@ static void verifyMethod( ClassFile *cf, method_info *m ) {
       }
 
 	if ( verifyOpcode(itable, cf, m, ipos, retType) == -1 ) {
-	fprintf(stdout, "Verification Failed at instruction %d : %s\n", ipos, opcodes[m->code[ipos]].opcodeName);
+	fprintf(stderr, "Verification Failed at instruction %d : %s\n", ipos, opcodes[m->code[ipos]].opcodeName);
 	exit(-1);
       }
 	//if (tracingExecution & TRACE_VERIFY) {
