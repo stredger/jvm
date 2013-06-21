@@ -52,7 +52,7 @@ static void printAllInstructions(method_info *m, char *name) {
       fprintf(stdout, "  %d : %s\t%d\n", i, opcodes[m->code[i]].opcodeName, m->code[i]);
     else
       fprintf(stdout, "  %d : %s\t%d\n", i, "(data)", m->code[i]);
-    //i += strlen(opcodes[m->code[i]].inlineOperands); // Skip over inline operators
+    i += strlen(opcodes[m->code[i]].inlineOperands); // Skip over inline operators
   }
 }
 
@@ -259,7 +259,6 @@ static int compareReferenceTypes(char *t1, char *t2) {
   return 0;
 }
 
-
 static int checkInLocalsRange(int varnum, int max) {
   if (varnum >= max) {
     fprintf(stdout, "Local var out of range, tried: %d max:%d\n", varnum, max-1);
@@ -269,12 +268,11 @@ static int checkInLocalsRange(int varnum, int max) {
 }
 
 
-static int checkJumpPosition(int pos, InstructionInfo *itable, int imax) {
+static int checkCodePosition(int pos, int imax) {
   if (pos >= imax) {
     fprintf(stdout, "Code position out of range, tried: %d max:%d\n", pos, imax-1);
     return -1;
   }
-  // check pos has valid bit set
   return 0;
 }
 
@@ -300,7 +298,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 
   case 0x00: // nop
     // just move to the next instruction
-    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+    if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
       return -1;
     break;
 
@@ -308,7 +307,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     if ( checkStackOverflow(*stkSizePtr, 1, m->max_stack) == -1 )
       return -1; // verification failed
     stackbase[(*stkSizePtr)++] = "N"; // push N onto stack
-    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+    if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
       return -1;
     break;
 
@@ -322,7 +322,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     if ( checkStackOverflow(*stkSizePtr, 1, m->max_stack) == -1 )
       return -1;
     stackbase[(*stkSizePtr)++] = "I"; // push I onto stack
-    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+    if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
       return -1;
     break;
     
@@ -332,7 +333,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
       return -1;  
     stackbase[(*stkSizePtr)++] = "l"; // push l onto stack
     stackbase[(*stkSizePtr)++] = "L"; // push L onto stack
-    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+    if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
       return -1;
     break;
 
@@ -342,7 +344,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     if ( checkStackOverflow(*stkSizePtr, 1, m->max_stack) == -1 )
       return -1;
     stackbase[(*stkSizePtr)++] = "F"; // push F onto stack
-    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+    if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
       return -1;
     break;
 
@@ -352,7 +355,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
       return -1;  
     stackbase[(*stkSizePtr)++] = "d"; // push d onto stack
     stackbase[(*stkSizePtr)++] = "D"; // push D onto stack
-    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+    if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
       return -1;
     break;
 
@@ -361,7 +365,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     if ( checkStackOverflow(*stkSizePtr, 1, m->max_stack) == -1 )
       return -1;
     stackbase[(*stkSizePtr)++] = "I";
-    if ( updateInstruction(&itable[ipos], &itable[ipos+2], typeArrSize) == -1 )
+    if ( checkCodePosition(ipos+2, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+2], typeArrSize) == -1 )
       return -1;
     break;
 
@@ -370,7 +375,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     if ( checkStackOverflow(*stkSizePtr, 1, m->max_stack) == -1 )
       return -1;
     stackbase[(*stkSizePtr)++] = "I";
-    if ( updateInstruction(&itable[ipos], &itable[ipos+3], typeArrSize) == -1 )
+    if ( checkCodePosition(ipos+3, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+3], typeArrSize) == -1 )
       return -1;
     break;
 
@@ -394,7 +400,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
       fprintf(stdout, "Trying to load incorrect constant type, tried: %d, expected: 3, 4, 8\n", cf->cp_tag[varnum]);
       return -1;
     }
-    if ( updateInstruction(&itable[ipos], &itable[ipos+2], typeArrSize) == -1 )
+    if ( checkCodePosition(ipos+2, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+2], typeArrSize) == -1 )
       return -1;
     break;
 
@@ -417,7 +424,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
       fprintf(stdout, "Trying to load incorrect constant type, tried: %d, expected: 3, 4, 8\n", cf->cp_tag[varnum]);
       return -1;
     }
-    if ( updateInstruction(&itable[ipos], &itable[ipos+3], typeArrSize) == -1 )
+    if ( checkCodePosition(ipos+3, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+3], typeArrSize) == -1 )
       return -1;
     break;
 
@@ -450,7 +458,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
       return -1;
     stackbase[(*stkSizePtr)++] = "I"; // push I onto stack
     // the next instruction is the current instruction position plus two
-    if ( updateInstruction(&itable[ipos], &itable[ipos+2], typeArrSize) == -1 )
+    if ( checkCodePosition(ipos+2, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+2], typeArrSize) == -1 )
       return -1;
     break;
     
@@ -463,7 +472,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     stackbase[(*stkSizePtr)++] = "l";
     stackbase[(*stkSizePtr)++] = "L";
     // the next instruction is the current instruction position plus two (plus 1 is the inline!)
-    if ( updateInstruction(&itable[ipos], &itable[ipos+2], typeArrSize) == -1 )
+    if ( checkCodePosition(ipos+2, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+2], typeArrSize) == -1 )
       return -1;
     break;
 
@@ -475,7 +485,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
       return -1;
     stackbase[(*stkSizePtr)++] = "F";
     // the next instruction is the current instruction position plus two
-    if ( updateInstruction(&itable[ipos], &itable[ipos+2], typeArrSize) == -1 )
+    if ( checkCodePosition(ipos+2, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+2], typeArrSize) == -1 )
       return -1;
     break;
 
@@ -488,7 +499,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     stackbase[(*stkSizePtr)++] = "d";
     stackbase[(*stkSizePtr)++] = "D";
     // the next instruction is the current instruction position plus two
-    if ( updateInstruction(&itable[ipos], &itable[ipos+2], typeArrSize) == -1 )
+    if ( checkCodePosition(ipos+2, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+2], typeArrSize) == -1 )
       return -1;
     break;
 
@@ -499,7 +511,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 	 compareReferenceTypes(localsbase[varnum], "A") == -1 )
       return -1;
     stackbase[(*stkSizePtr)++] = localsbase[varnum];
-    if ( updateInstruction(&itable[ipos], &itable[ipos+2], typeArrSize) == -1 )
+    if ( checkCodePosition(ipos+2, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+2], typeArrSize) == -1 )
       return -1;
     break;
   
@@ -513,7 +526,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 	 compareSimpleTypes(localsbase[varnum], "I") == -1 )
       return -1;
     stackbase[(*stkSizePtr)++] = "I";
-    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+    if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
       return -1;
     break;
 
@@ -528,7 +542,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
       return -1;
     stackbase[(*stkSizePtr)++] = "l";
     stackbase[(*stkSizePtr)++] = "L";
-    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+    if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
       return -1;
     break;
 
@@ -542,7 +557,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 	 compareSimpleTypes(localsbase[varnum], "F") == -1 )
       return -1;
     stackbase[(*stkSizePtr)++] = "F";
-    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+    if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
       return -1;
     break;
 
@@ -557,7 +573,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
       return -1;
     stackbase[(*stkSizePtr)++] = "d";
     stackbase[(*stkSizePtr)++] = "D";
-    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+    if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
       return -1;
     break;
 
@@ -571,7 +588,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 	 compareReferenceTypes(localsbase[varnum], "A") == -1 )
       return -1;
     stackbase[(*stkSizePtr)++] = localsbase[varnum];
-    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+    if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
       return -1;
     break;
 
@@ -585,7 +603,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 	 compareSimpleTypes(stackbase[*stkSizePtr - 2], "I") == -1 )
 	 return -1;
     stackbase[--(*stkSizePtr)] = "-"; // pop the A, keep the I and we are golden
-    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+    if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
       return -1;
     break;
 
@@ -596,7 +615,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 	 return -1;
     stackbase[*stkSizePtr - 1] = "L";
     stackbase[*stkSizePtr - 2] = "l";
-    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+    if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
       return -1;
     break;
 
@@ -607,7 +627,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 	 return -1;
     stackbase[--(*stkSizePtr)] = "-";
     stackbase[*stkSizePtr - 1] = "F";
-    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+    if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
       return -1;
     break;
 
@@ -618,7 +639,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 	 return -1;
     stackbase[*stkSizePtr - 1] = "D";
     stackbase[*stkSizePtr - 2] = "d";
-    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+    if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
       return -1;
     break;
 
@@ -630,7 +652,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     // chop the A[ off the type, should really do a strdup here.. and everywhere actually
     stackbase[*stkSizePtr - 2] = &stackbase[*stkSizePtr - 1][2];
     stackbase[--(*stkSizePtr)] = "-";
-    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+    if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
       return -1;
     break;
 
@@ -643,7 +666,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     stackbase[--(*stkSizePtr)] = "-"; // basically pop the I
     localsbase[varnum] = "I";
     // next instruction is at ipos + 2
-    if ( updateInstruction(&itable[ipos], &itable[ipos+2], typeArrSize) == -1 )
+    if ( checkCodePosition(ipos+2, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+2], typeArrSize) == -1 )
       return -1;
     break;
 
@@ -658,7 +682,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     stackbase[--(*stkSizePtr)] = "-"; // and l
     localsbase[varnum] = "Ll";
     // next instruction is at ipos + 2
-    if ( updateInstruction(&itable[ipos], &itable[ipos+2], typeArrSize) == -1 )
+    if ( checkCodePosition(ipos+2, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+2], typeArrSize) == -1 )
       return -1;
     break;
 
@@ -670,7 +695,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
       return -1;
     stackbase[--(*stkSizePtr)] = "-"; // pop the F
     localsbase[varnum] = "F";
-    if ( updateInstruction(&itable[ipos], &itable[ipos+2], typeArrSize) == -1 )
+    if ( checkCodePosition(ipos+2, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+2], typeArrSize) == -1 )
       return -1;
     break;
 
@@ -684,7 +710,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     stackbase[--(*stkSizePtr)] = "-"; // pop the D
     stackbase[--(*stkSizePtr)] = "-"; // pop the d
     localsbase[varnum] = "Dd";
-    if ( updateInstruction(&itable[ipos], &itable[ipos+2], typeArrSize) == -1 )
+    if ( checkCodePosition(ipos+2, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+2], typeArrSize) == -1 )
       return -1;
     break;
 
@@ -696,7 +723,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
       return -1;
     localsbase[varnum] = stackbase[*stkSizePtr - 1];
     stackbase[--(*stkSizePtr)] = "-"; // pop the A..
-    if ( updateInstruction(&itable[ipos], &itable[ipos+2], typeArrSize) == -1 )
+    if ( checkCodePosition(ipos+2, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+2], typeArrSize) == -1 )
       return -1;
     break;
 
@@ -711,7 +739,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
       return -1;
     stackbase[--(*stkSizePtr)] = "-"; // pop the I
     localsbase[varnum] = "I"; // just smash over whatever was here before
-    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+    if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
       return -1;
     break;
 
@@ -727,7 +756,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     stackbase[--(*stkSizePtr)] = "-"; // pop the L
     stackbase[--(*stkSizePtr)] = "-"; // pop the l
     localsbase[varnum] = "Ll";
-    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+    if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
       return -1;
     break;
 
@@ -741,7 +771,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
       return -1;
     stackbase[--(*stkSizePtr)] = "-";
     localsbase[varnum] = "F";
-    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+    if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
       return -1;
     break;
 
@@ -757,7 +788,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     stackbase[--(*stkSizePtr)] = "-"; // pop the D
     stackbase[--(*stkSizePtr)] = "-"; // pop the d
     localsbase[varnum] = "Dd";
-    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+    if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
       return -1;
     break;
 
@@ -772,7 +804,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     // could be 1 line if we had a pop fn yo!
     localsbase[varnum] = stackbase[*stkSizePtr - 1];
     stackbase[--(*stkSizePtr)] = "-";
-    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+    if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
       return -1;
     break;
 
@@ -788,7 +821,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     stackbase[--(*stkSizePtr)] = "-";
     stackbase[--(*stkSizePtr)] = "-";
     stackbase[--(*stkSizePtr)] = "-";
-    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+    if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
       return -1;
     break;
 
@@ -803,7 +837,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     stackbase[--(*stkSizePtr)] = "-";
     stackbase[--(*stkSizePtr)] = "-";
     stackbase[--(*stkSizePtr)] = "-";
-    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+    if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
       return -1;
     break;
 
@@ -816,7 +851,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     stackbase[--(*stkSizePtr)] = "-";
     stackbase[--(*stkSizePtr)] = "-";
     stackbase[--(*stkSizePtr)] = "-";
-    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+    if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
       return -1;
     break;
 
@@ -831,7 +867,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     stackbase[--(*stkSizePtr)] = "-";
     stackbase[--(*stkSizePtr)] = "-";
     stackbase[--(*stkSizePtr)] = "-";
-    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+    if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
       return -1;
     break;
 
@@ -845,7 +882,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     stackbase[--(*stkSizePtr)] = "-";
     stackbase[--(*stkSizePtr)] = "-";
     stackbase[--(*stkSizePtr)] = "-";
-    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+    if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
       return -1;
     break;
 
@@ -853,7 +891,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     if ( checkStackUnderflow(*stkSizePtr, 1) == -1 )
       return -1;
     stackbase[--(*stkSizePtr)] = "-"; // pop the val
-    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+    if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
       return -1;
     break;
 
@@ -862,7 +901,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
       return -1;
     stackbase[--(*stkSizePtr)] = "-"; // pop the first val
     stackbase[--(*stkSizePtr)] = "-"; // and the second
-    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+    if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
       return -1;
     break;
 
@@ -873,7 +913,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
       return -1;
     varnum = (*stkSizePtr)++; // dont want to screw up the incrementing so just do it here
     stackbase[varnum] = stackbase[varnum - 1];
-    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+    if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
       return -1;
     break;
 
@@ -884,7 +925,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
       return -1;
     varnum = (*stkSizePtr)++; // dont want to screw up the incrementing so just do it here
     stackbase[varnum] = stackbase[varnum - 2];
-    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+    if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
       return -1;
     break;
 
@@ -895,7 +937,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
       return -1;
     varnum = (*stkSizePtr)++; // dont want to screw up the incrementing so just do it here
     stackbase[varnum] = stackbase[varnum - 3];
-    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+    if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
       return -1;
     break;
 
@@ -908,7 +951,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     stackbase[varnum] = stackbase[varnum - 2];
     varnum = (*stkSizePtr)++; // and repeat for the second val
     stackbase[varnum] = stackbase[varnum - 2];
-    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+    if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
       return -1;
     break;
 
@@ -921,7 +965,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     stackbase[varnum] = stackbase[varnum - 3];
     varnum = (*stkSizePtr)++; // and repeat for the second val
     stackbase[varnum] = stackbase[varnum - 3];
-    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+    if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
       return -1;
     break;
 
@@ -934,7 +979,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     stackbase[varnum] = stackbase[varnum - 4];
     varnum = (*stkSizePtr)++; // and repeat for the second val
     stackbase[varnum] = stackbase[varnum - 4];
-    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+    if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
       return -1;
     break;
 
@@ -946,7 +992,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     tmpStr = stackbase[varnum];
     stackbase[varnum] = stackbase[varnum - 1];
     stackbase[varnum - 1] = tmpStr;
-    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+    if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
       return -1;
     break;
 
@@ -967,7 +1014,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 	 compareSimpleTypes(stackbase[*stkSizePtr - 2], "I") == -1 )
       return -1;
     stackbase[--(*stkSizePtr)] = "-"; // just pop an I (pop 2, push 1)
-    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+    if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
       return -1;
     break;
     
@@ -991,7 +1039,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
       return -1;
     stackbase[--(*stkSizePtr)] = "-"; // just pop an L
     stackbase[--(*stkSizePtr)] = "-"; // and the l
-    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+    if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
       return -1;
     break;   
 
@@ -1006,7 +1055,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 	 compareSimpleTypes(stackbase[*stkSizePtr - 2], "F") == -1 )
       return -1;
     stackbase[--(*stkSizePtr)] = "-";
-    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+    if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
       return -1;
     break;
 
@@ -1024,7 +1074,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
       return -1;
     stackbase[--(*stkSizePtr)] = "-";
     stackbase[--(*stkSizePtr)] = "-";
-    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+    if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
       return -1;
     break;   
 
@@ -1035,7 +1086,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     if ( checkStackUnderflow(*stkSizePtr, 1) == -1 || 
 	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "I") == -1 )
       return -1;
-    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+    if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
       return -1;
     break;
 
@@ -1044,7 +1096,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "L") == -1 ||
 	 compareSimpleTypes(stackbase[*stkSizePtr - 2], "l") == -1 )
       return -1;
-    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+    if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
       return -1;
     break;
 
@@ -1052,7 +1105,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     if ( checkStackUnderflow(*stkSizePtr, 1) == -1 ||
 	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "F") == -1 )
       return -1;
-    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+    if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
       return -1;
     break;
 
@@ -1061,7 +1115,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "D") == -1 ||
 	 compareSimpleTypes(stackbase[*stkSizePtr - 2], "d") == -1 )
       return -1;
-    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+    if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
       return -1;
     break;
 
@@ -1080,7 +1135,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
       return -1;
     stackbase[(*stkSizePtr) - 1] = "l"; // overwrite the old stack ele
     stackbase[(*stkSizePtr)++] = "L"; // and add a new one
-    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+    if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
       return -1;
     break;
 
@@ -1089,7 +1145,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 	 compareSimpleTypes(stackbase[(*stkSizePtr) - 1], "I") == -1 )
       return -1;
     stackbase[(*stkSizePtr) - 1] = "F"; // just overwrite the old ele
-    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+    if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
       return -1;
     break;
 
@@ -1100,7 +1157,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
       return -1;
     stackbase[(*stkSizePtr) - 1] = "d";
     stackbase[(*stkSizePtr)++] = "D";
-    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+    if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
       return -1;
     break;
 
@@ -1133,7 +1191,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 	 compareSimpleTypes(stackbase[(*stkSizePtr) - 1], "F") == -1 )
       return -1;
     stackbase[(*stkSizePtr) - 1] = "I"; // just overwrite the old ele
-    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+    if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
       return -1;
     break;
 
@@ -1144,7 +1203,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
       return -1;
     stackbase[(*stkSizePtr) - 1] = "l"; // overwrite the old stack ele
     stackbase[(*stkSizePtr)++] = "L"; // and add a new one
-    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+    if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
       return -1;
     break;
 
@@ -1155,7 +1215,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
       return -1;
     stackbase[(*stkSizePtr) - 1] = "d"; // overwrite the old stack ele
     stackbase[(*stkSizePtr)++] = "D"; // and add a new one
-    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+    if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
       return -1;
     break;
 
@@ -1166,7 +1227,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
       return -1;
     stackbase[--(*stkSizePtr)] = "-"; // pop the D
     stackbase[(*stkSizePtr) - 1] = "I"; // change the d to an I
-    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+    if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
       return -1;
     break;
 
@@ -1177,7 +1239,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
       return -1;
     stackbase[(*stkSizePtr) - 1] = "L"; // change D to L
     stackbase[(*stkSizePtr) - 2] = "l"; // and d to l
-    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+    if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
       return -1;
     break;
 
@@ -1188,7 +1251,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
       return -1;
     stackbase[--(*stkSizePtr)] = "-"; // pop the L
     stackbase[(*stkSizePtr) - 1] = "F"; // change the l to an F
-    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+    if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
       return -1;
     break;
 
@@ -1203,7 +1267,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     stackbase[--(*stkSizePtr)] = "-"; // l
     stackbase[--(*stkSizePtr)] = "-"; // L
     stackbase[(*stkSizePtr) - 1] = "I"; // convert the l to an I
-    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+    if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
       return -1;
     break;
 
@@ -1215,7 +1280,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
       return -1;
     stackbase[--(*stkSizePtr)] = "-"; // pop 
     stackbase[(*stkSizePtr) - 1] = "I"; // convert the F to an I
-    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+    if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
       return -1;
     break;
 
@@ -1231,7 +1297,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     stackbase[--(*stkSizePtr)] = "-";
     stackbase[--(*stkSizePtr)] = "-";
     stackbase[(*stkSizePtr) - 1] = "I";
-    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+    if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
       return -1;
     break;
 
@@ -1243,12 +1310,13 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
   case 0x9e: // ifle
     varnum = (m->code[ipos+1] << 8) + m->code[ipos+2];
     if ( checkStackUnderflow(*stkSizePtr, 1) == -1 ||
-	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "I") == -1 ||
-	 checkJumpPosition(ipos + varnum, itable, m->code_length) == -1 )
+	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "I") == -1 )
       return -1;
     stackbase[--(*stkSizePtr)] = "-";
     // uprade branch point and next instruction
-    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 ||
+    if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
+	 checkCodePosition(ipos+varnum, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 ||
 	 updateInstruction(&itable[ipos], &itable[ipos + varnum], typeArrSize) == -1 )
       return -1;
     break;
@@ -1262,13 +1330,14 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     varnum = (m->code[ipos+1] << 8) + m->code[ipos+2];
     if ( checkStackUnderflow(*stkSizePtr, 2) == -1 ||
 	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "I") == -1 ||
-	 compareSimpleTypes(stackbase[*stkSizePtr - 2], "I") == -1 ||
-	 checkJumpPosition(ipos + varnum, itable, m->code_length) == -1 )
+	 compareSimpleTypes(stackbase[*stkSizePtr - 2], "I") == -1 )
       return -1;
     stackbase[--(*stkSizePtr)] = "-";
     stackbase[--(*stkSizePtr)] = "-";
     // uprade branch point and next instruction
-    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 || 
+    if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
+	 checkCodePosition(ipos+varnum, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 || 
 	 updateInstruction(&itable[ipos], &itable[ipos + varnum], typeArrSize) == -1 )
       return -1;
     break;
@@ -1278,26 +1347,28 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     varnum = (m->code[ipos+1] << 8) + m->code[ipos+2];
     if ( checkStackUnderflow(*stkSizePtr, 2) == -1 ||
 	 compareReferenceTypes(stackbase[*stkSizePtr - 1], "A") == -1 ||
-	 compareReferenceTypes(stackbase[*stkSizePtr - 2], "A") == -1 ||
-	 checkJumpPosition(ipos + varnum, itable, m->code_length) == -1 )
+	 compareReferenceTypes(stackbase[*stkSizePtr - 2], "A") == -1 )
       return -1;
     stackbase[--(*stkSizePtr)] = "-";
     stackbase[--(*stkSizePtr)] = "-";
-    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 ||
+    if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
+	 checkCodePosition(ipos+varnum, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 ||
 	 updateInstruction(&itable[ipos], &itable[ipos + varnum], typeArrSize) == -1 )
       return -1;
     break;
 
   case 0xa7: // goto
     varnum = (m->code[ipos+1] << 8) + m->code[ipos+2];
-    if ( checkJumpPosition(ipos + varnum, itable, m->code_length) == -1 ||
+    if ( checkCodePosition(ipos + varnum, m->code_length) == -1 ||
 	 updateInstruction(&itable[ipos], &itable[ipos + varnum], typeArrSize) == -1 )
       return -1;
     break;
 
   case 0xa8: // jsr
     // treat like nop but ignore 2 inline vals
-    if ( updateInstruction(&itable[ipos], &itable[ipos+3], typeArrSize) == -1 )
+    if ( checkCodePosition(ipos+3, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+3], typeArrSize) == -1 )
       return -1;
     break;
 
@@ -1429,8 +1500,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     } else
       stackbase[(*stkSizePtr)++] = SafeStrdup(tmpStr);
       SafeFree(tmpStr);
-      if ( updateInstruction(&itable[ipos], &itable[ipos+3], typeArrSize) == -1 )
-	
+      if ( checkCodePosition(ipos+3, m->code_length) == -1 ||
+	   updateInstruction(&itable[ipos], &itable[ipos+3], typeArrSize) == -1 )
       return -1;
     break;
 
@@ -1454,7 +1525,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     } else
       stackbase[(*stkSizePtr)++] = SafeStrdup(tmpStr);
     SafeFree(tmpStr);
-    if ( updateInstruction(&itable[ipos], &itable[ipos+3], typeArrSize) == -1 )
+    if ( checkCodePosition(ipos+3, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+3], typeArrSize) == -1 )
       return -1;
     break;
 
@@ -1489,7 +1561,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
       stackbase[--(*stkSizePtr)] = "-";
     }
     SafeFree(tmpStr);
-    if ( updateInstruction(&itable[ipos], &itable[ipos+3], typeArrSize) == -1 )
+    if ( checkCodePosition(ipos+3, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+3], typeArrSize) == -1 )
       return -1;
     break;
 	
@@ -1539,7 +1612,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     tmpStr = GetCPItemAsString(cf, varnum);
     stackbase[(*stkSizePtr)++] = SafeStrcat("AL", tmpStr);
     SafeFree(tmpStr);
-    if ( updateInstruction(&itable[ipos], &itable[ipos+3], typeArrSize) == -1 )
+    if ( checkCodePosition(ipos+3, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+3], typeArrSize) == -1 )
       return -1;
     break;
   
@@ -1564,7 +1638,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     default:
       return -1;
     }
-    if ( updateInstruction(&itable[ipos], &itable[ipos+2], typeArrSize) == -1 )
+    if ( checkCodePosition(ipos+2, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+2], typeArrSize) == -1 )
       return -1;
     break;
 
@@ -1576,7 +1651,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     tmpStr = GetCPItemAsString(cf, varnum);
     stackbase[*stkSizePtr - 1] = SafeStrcat("A[", tmpStr);
     SafeFree(tmpStr);
-    if ( updateInstruction(&itable[ipos], &itable[ipos+3], typeArrSize) == -1 )
+    if ( checkCodePosition(ipos+3, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+3], typeArrSize) == -1 )
       return -1;
     break;
 
@@ -1585,7 +1661,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 	 compareReferenceTypes(stackbase[*stkSizePtr - 1], "A[") == -1 )
       return -1;
     stackbase[*stkSizePtr - 1] = "I";
-    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
+    if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
       return -1;
     break;
 
@@ -1595,7 +1672,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
      checkInCPRange(cf->constant_pool_count, varnum) == -1 ||
      compareReferenceTypes(stackbase[*stkSizePtr - 1], "A") == -1 )
       return -1;   
-    if ( updateInstruction(&itable[ipos], &itable[ipos+3], typeArrSize) == -1 )
+    if ( checkCodePosition(ipos+3, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+3], typeArrSize) == -1 )
       return -1;
     break;  
     
@@ -1608,7 +1686,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
       return -1;   
     stackbase[--(*stkSizePtr)] = "-"; // Pop "A"
     stackbase[(*stkSizePtr)++] = "I"; // Push "I"
-    if ( updateInstruction(&itable[ipos], &itable[ipos+3], typeArrSize) == -1 )
+    if ( checkCodePosition(ipos+3, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+3], typeArrSize) == -1 )
       return -1;
     break;
 
@@ -1618,8 +1697,8 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
      compareReferenceTypes(stackbase[*stkSizePtr - 1], "A") == -1)
       return -1;   
     stackbase[--(*stkSizePtr)] = "-"; // Pop "A"
-    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
-
+    if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
       return -1;
     break;
 
@@ -1629,8 +1708,11 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     varnum = ipos;
     if (m->code[ipos+1] == 0x84)
       varnum += 2; // move 5 if iinc
-    varnum += 3; // 3 otherwise... which is incorrect for some cases but whatever
-    if ( updateInstruction(&itable[ipos], &itable[varnum], typeArrSize) == -1 )
+    varnum += 3; // 3 otherwise
+    if ( checkCodePosition(varnum, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[varnum], typeArrSize) == -1 )
+      return -1;
+    break;
 
   case 0xc5: // multianewarray
     varnum = (m->code[ipos+1] << 8) + m->code[ipos+2];
@@ -1677,11 +1759,12 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
   case 0xc7: // ifnonnull
     varnum = (m->code[ipos+1] << 8) + m->code[ipos+2];
     if ( checkStackUnderflow(*stkSizePtr, 1) == -1 ||
-	 compareReferenceTypes(stackbase[*stkSizePtr - 1], "A") == -1 ||
-	 checkJumpPosition(ipos + varnum, itable, m->code_length) == -1 )
+	 compareReferenceTypes(stackbase[*stkSizePtr - 1], "A") == -1 )
       return -1;
     stackbase[--(*stkSizePtr)] = "-";
-    if ( updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 ||
+    if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
+	 checkCodePosition(ipos+varnum, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 ||
 	 updateInstruction(&itable[ipos], &itable[ipos + varnum], typeArrSize) == -1 )
       return -1;
     break;
@@ -1689,21 +1772,21 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
   case 0xc8: // goto_w
     varnum = (m->code[ipos+1] << 24) + (m->code[ipos+2] << 16) +
       (m->code[ipos+3] << 8) + m->code[ipos+4];
-    if ( checkJumpPosition(ipos + varnum, itable, m->code_length) == -1 ||
+    if ( checkCodePosition(ipos + varnum, m->code_length) == -1 ||
 	 updateInstruction(&itable[ipos], &itable[ipos + varnum], typeArrSize) == -1 )
       return -1;    
     break;
 
   case 0xc9: // jsr_w
     // treat like nop but ignore 4 inline vals
-    if ( updateInstruction(&itable[ipos], &itable[ipos+5], typeArrSize) == -1 )
+    if ( checkCodePosition(ipos+5, m->code_length) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+5], typeArrSize) == -1 )
       return -1;
     break;
 
-
-
   default:
-    fprintf(stdout, "Verification for opcode %d %s not implemented!\n", op, opcodes[op].opcodeName);
+    fprintf(stdout, "Unrecognized Opcode: %d\n", op);
+    return -1;
   }
   
   return 0;
