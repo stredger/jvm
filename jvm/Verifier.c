@@ -1615,6 +1615,16 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     varnum += 3; // 3 otherwise... which is incorrect for some cases but whatever
     if ( updateInstruction(&itable[ipos], &itable[varnum], typeArrSize) == -1 )
 
+  case 0xc5: // multianewarray
+    varnum = (m->code[ipos+1] << 8) + m->code[ipos+2];
+    tmpArgsSize = m->code[ipos+3];
+    
+    // TODO Work in progress
+    
+    if ( updateInstruction(&itable[ipos], &itable[ipos+4], typeArrSize) == -1 )
+      return -1;
+    break;
+
   case 0xc6: // ifnull
   case 0xc7: // ifnonnull
     varnum = (m->code[ipos+1] << 8) + m->code[ipos+2];
