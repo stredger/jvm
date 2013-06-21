@@ -1735,6 +1735,10 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
       return -1;
     break;
+    
+  case 0Xbf: // athrow
+    fprintf(stderr, "Opcode: %d athrow unimplemented!\n", op);
+    break;
 
   case 0xc0: // checkcast
     varnum = (m->code[ipos+1] << 8) + m->code[ipos+2];    
@@ -1774,7 +1778,7 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 
   case 0xc4: // wide
     // unimplemented
-    fprintf(stdout, "Opcode: %d wide unimplemented!\n", op);
+    fprintf(stderr, "Opcode: %d wide unimplemented!\n", op);
     varnum = ipos;
     if (m->code[ipos+1] == 0x84)
       varnum += 2; // move 5 if iinc
