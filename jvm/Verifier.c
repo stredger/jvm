@@ -1,3 +1,6 @@
+// Stephen Tredger, V00185745
+// Josh Erickson, V00218296
+
 /* Verifier.c */
 
 #include <stdio.h>
@@ -946,8 +949,15 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     if ( checkStackUnderflow(*stkSizePtr, 2) == -1 || 
 	 checkStackOverflow(*stkSizePtr, 1, m->max_stack) == -1 )
       return -1;
-    varnum = (*stkSizePtr)++; // dont want to screw up the incrementing so just do it here
-    stackbase[varnum] = stackbase[varnum - 2];
+    // Copy top value
+    tmpStr = SafeStrdup(stackbase[(*stkSizePtr) - 1]);
+    // Move top two values up one spot each, place copied value in slot below them  
+    stackbase[(*stkSizePtr)] = stackbase[(*stkSizePtr) - 1];
+    stackbase[(*stkSizePtr) - 1] = stackbase[(*stkSizePtr) - 2];
+    stackbase[(*stkSizePtr) - 2] = SafeStrdup(tmpStr);
+    SafeFree(tmpStr);
+    // Increase the stack height pointer
+    (*stkSizePtr)++;
     if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
 	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
       return -1;
@@ -958,8 +968,16 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     if ( checkStackUnderflow(*stkSizePtr, 3) == -1 || 
 	 checkStackOverflow(*stkSizePtr, 1, m->max_stack) == -1 )
       return -1;
-    varnum = (*stkSizePtr)++; // dont want to screw up the incrementing so just do it here
-    stackbase[varnum] = stackbase[varnum - 3];
+    // Copy top value
+    tmpStr = SafeStrdup(stackbase[(*stkSizePtr) - 1]);
+    // Move top two values up one spot each, place copied value in slot below them  
+    stackbase[(*stkSizePtr)] = stackbase[(*stkSizePtr) - 1];
+    stackbase[(*stkSizePtr) - 1] = stackbase[(*stkSizePtr) - 2];
+    stackbase[(*stkSizePtr) - 2] = stackbase[(*stkSizePtr) - 3];
+    stackbase[(*stkSizePtr) - 3] = SafeStrdup(tmpStr);
+    SafeFree(tmpStr);
+    // Increase the stack height pointer
+    (*stkSizePtr)++;         
     if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
 	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
       return -1;
@@ -984,10 +1002,19 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     if ( checkStackUnderflow(*stkSizePtr, 3) == -1 || 
 	 checkStackOverflow(*stkSizePtr, 2, m->max_stack) == -1 )
       return -1;
-    varnum = (*stkSizePtr)++; // dont want to screw up the incrementing so just do it here
-    stackbase[varnum] = stackbase[varnum - 3];
-    varnum = (*stkSizePtr)++; // and repeat for the second val
-    stackbase[varnum] = stackbase[varnum - 3];
+    // Copy top two values
+    tmpStr = SafeStrdup(stackbase[(*stkSizePtr) - 1]);
+    tmpStr2 = SafeStrdup(stackbase[(*stkSizePtr) - 2]);
+    // Move top three values up two spots each, place copied values in slots below them  
+    stackbase[(*stkSizePtr) + 1] = stackbase[(*stkSizePtr) - 1];
+    stackbase[(*stkSizePtr)] = stackbase[(*stkSizePtr) - 2];
+    stackbase[(*stkSizePtr) - 1] = stackbase[(*stkSizePtr) - 3];
+    stackbase[(*stkSizePtr) - 2] = SafeStrdup(tmpStr);
+    stackbase[(*stkSizePtr) - 3] = SafeStrdup(tmpStr2);
+    SafeFree(tmpStr);
+    SafeFree(tmpStr2);
+    // Increase the stack height pointer
+    (*stkSizePtr) += 2;  
     if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
 	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
       return -1;
@@ -998,10 +1025,20 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     if ( checkStackUnderflow(*stkSizePtr, 4) == -1 || 
 	 checkStackOverflow(*stkSizePtr, 2, m->max_stack) == -1 )
       return -1;
-    varnum = (*stkSizePtr)++; // dont want to screw up the incrementing so just do it here
-    stackbase[varnum] = stackbase[varnum - 4];
-    varnum = (*stkSizePtr)++; // and repeat for the second val
-    stackbase[varnum] = stackbase[varnum - 4];
+    // Copy top two values
+    tmpStr = SafeStrdup(stackbase[(*stkSizePtr) - 1]);
+    tmpStr2 = SafeStrdup(stackbase[(*stkSizePtr) - 2]);
+    // Move top four values up two spots each, place copied values in slots below them  
+    stackbase[(*stkSizePtr) + 1] = stackbase[(*stkSizePtr) - 1];
+    stackbase[(*stkSizePtr)] = stackbase[(*stkSizePtr) - 2];
+    stackbase[(*stkSizePtr) - 1] = stackbase[(*stkSizePtr) - 3];
+    stackbase[(*stkSizePtr) - 2] = stackbase[(*stkSizePtr) - 4];
+    stackbase[(*stkSizePtr) - 4] = SafeStrdup(tmpStr);
+    stackbase[(*stkSizePtr) - 5] = SafeStrdup(tmpStr2);
+    SafeFree(tmpStr);
+    SafeFree(tmpStr2);
+    // Increase the stack height pointer
+    (*stkSizePtr) += 2; 
     if ( checkCodePosition(ipos+1, m->code_length) == -1 ||
 	 updateInstruction(&itable[ipos], &itable[ipos+1], typeArrSize) == -1 )
       return -1;
@@ -1703,6 +1740,10 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
       return -1;
     break;
 
+  case 0Xbf: // athrow
+    fprintf(stderr, "Opcode: %d athrow unimplemented!\n", op);
+    break;
+
   case 0xc0: // checkcast
     varnum = (m->code[ipos+1] << 8) + m->code[ipos+2];    
     if ( checkStackUnderflow(*stkSizePtr, 1) == -1 ||
@@ -1741,7 +1782,7 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 
   case 0xc4: // wide
     // unimplemented
-    fprintf(stdout, "Opcode: %d wide unimplemented!\n", op);
+    fprintf(stderr, "Opcode: %d wide unimplemented!\n", op);
     varnum = ipos;
     if (m->code[ipos+1] == 0x84)
       varnum += 2; // move 5 if iinc

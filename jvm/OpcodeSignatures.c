@@ -1,3 +1,6 @@
+// Stephen Tredger, V00185745
+// Josh Erickson, V00218296
+
 /* OpcodeSignatures.c */
 
 /*
@@ -148,8 +151,8 @@ OpcodeDescription opcodes[] = {
 { 0X5a, "dup_x1",       "", "YX>XYX" }, /* insert a copy of the top value into the stack two values from the top. X and Y must not be of the type double or long. */
 { 0X5b, "dup_x2",       "", "ZYX>XZYX" }, /* insert a copy of X into the stack two (if Y is double or long it takes up the entry of Z, too) or three values (if Y is neither double nor long) from the top */
 { 0X5c, "dup2",         "", "XY>XYXY" }, /* duplicate top two stack words (two values, if Y is not double nor long; a single value, if Y is double or long) */
-{ 0X5d, "dup2_x1",      "", "ZYX>YXYXZYX" }, /* duplicate two words and insert beneath third word (see explanation above) */
-{ 0X5e, "dup2_x2",      "", "ZYXW>YXWZYX" }, /* duplicate two words and insert beneath fourth word */
+{ 0X5d, "dup2_x1",      "", "ZYX>YXZYX" }, /* duplicate two words and insert beneath third word (see explanation above) */
+{ 0X5e, "dup2_x2",      "", "ZYXW>XWZYXW" }, /* duplicate two words and insert beneath fourth word */
 { 0X5f, "swap",         "", "XY>YX" },  /* swaps two top words on the stack (note that X and Y must not be double or long) */
 { 0X60, "iadd",         "", "II>I" },   /* add two ints */
 { 0X61, "ladd",         "", "LlLl>Ll" }, /* add two longs */
