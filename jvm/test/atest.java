@@ -1,9 +1,7 @@
 class atest {
 
-    public atest thistest(float[] c) {
-	float[] a = {1};
-	float[] b = a;
-	return this;
+    public static void main(String args[][]) {
+      int[] i = {1, 2, 3};
     }
 
 }
