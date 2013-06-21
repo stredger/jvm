@@ -49,7 +49,7 @@ static void printAllInstructions(method_info *m, char *name) {
       fprintf(stdout, "  %d : %s\t%d\n", i, opcodes[m->code[i]].opcodeName, m->code[i]);
     else
       fprintf(stdout, "  %d : %s\t%d\n", i, "(data)", m->code[i]);
-	i += strlen(opcodes[m->code[i]].inlineOperands); // Skip over inline operators
+    //i += strlen(opcodes[m->code[i]].inlineOperands); // Skip over inline operators
   }
 }
 
@@ -148,15 +148,18 @@ static char *mergeTypes(char *t1, char*t2) {
 
 
 static int mergeState(InstructionInfo* oldi, InstructionInfo* newi, int typeArrLen) {
-  
+  fflush(stdout);
   if ( oldi->stksize != newi->stksize ) {
     fprintf(stdout, "Stack heights don't match: %d =/= %d\n", oldi->stksize, newi->stksize);
     return -1;
   }
   int i;
-  for (i = 0; *(oldi->state[i]) != '-' && i < typeArrLen; i++) {
+  fflush(stdout);
+  for (i = 0; i < typeArrLen && *(oldi->state[i]) != '-'; i++) {
+    fflush(stdout);
     newi->state[i] = mergeTypes(oldi->state[i], newi->state[i]);
   }
+  fflush(stdout);
   newi->cbit = 1;
   return 0;
 }
@@ -274,7 +277,6 @@ static int checkJumpPosition(int pos, InstructionInfo *itable, int imax) {
 }
 
 
-
 static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, int ipos, char *retType) {
 
   int op = m->code[ipos];
@@ -283,11 +285,9 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
   char *tmpStr;
   char **tmpArgs;
   char **tmpRets;
-  int tmpArgsSize;
-  int tmpIndex;
+  int tmpArgsSize, tmpIndex, varnum, switchHigh, switchLow, switchDefault;
   int *stkSizePtr = &itable[ipos].stksize;
   int typeArrSize = m->max_locals + m->max_stack;
-  int varnum;
 
   // say that we verified the instruction before we actually do it
   itable[ipos].cbit = 0;
@@ -1302,6 +1302,54 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     // literally don't do anything
     break;
 
+  case 0xaa: // tableswitch
+    if ( checkStackUnderflow(*stkSizePtr, 1) == -1 ||
+	 compareSimpleTypes(stackbase[*stkSizePtr -1], "I") == -1 )
+      return -1;
+    stackbase[--(*stkSizePtr)] = "-";
+
+    varnum = ipos+1;
+    printf("---------> varnum: %d\n", varnum);
+    if (varnum % 4) // make sure varnum is a multiple of 4
+      varnum += (varnum % 4);
+    printf("---------> varnum: %d\n", varnum);
+
+    switchDefault = (m->code[varnum] << 24) + (m->code[varnum+1] << 16) + 
+      (m->code[varnum+2] << 8) + m->code[varnum+3] + 1; // its this val plus 1 for some reason...
+    varnum += 4;
+    printf("--------->varnum: %d\n", varnum);
+    printf("--------->default: %d\n", switchDefault);
+    // check in code range??
+    if ( updateInstruction(&itable[ipos], &itable[switchDefault], typeArrSize) == -1 )
+      return -1;
+
+    switchLow = (m->code[varnum] << 24) + (m->code[varnum+1] << 16) + 
+      (m->code[varnum+2] << 8) + m->code[varnum+3];
+    varnum += 4;
+    printf("--------->varnum: %d\n", varnum);
+    printf("--------->low: %d\n", switchLow);
+
+    switchHigh = (m->code[varnum] << 24) + (m->code[varnum+1] << 16) + 
+      (m->code[varnum+2] << 8) + m->code[varnum+3];
+    varnum += 4;
+    printf("--------->varnum: %d\n", varnum);
+    printf("--------->high: %d\n", switchHigh);
+    int i;
+    for (i = 0; i < switchHigh - switchLow + 1; i++) {
+      switchDefault = (m->code[varnum] << 24) + (m->code[varnum+1] << 16) + 
+	(m->code[varnum+2] << 8) + m->code[varnum+3] + 1;
+      varnum += 4;
+      printf("--------->varnum: %d\n", varnum);
+      printf("--------->addr: %d\n", switchDefault);      
+      //
+      if ( updateInstruction(&itable[ipos], &itable[switchDefault+1], typeArrSize) == -1 )
+	return -1;
+    }
+    break;
+
+  case 0xab: // lookupswitch
+    break;
+
   case 0xac: // ireturn
     if ( checkStackUnderflow(*stkSizePtr, 1) == -1 ||
 	 compareSimpleTypes(retType, "I") == -1 || // check return type
@@ -1641,10 +1689,10 @@ static void verifyMethod( ClassFile *cf, method_info *m ) {
 	fprintf(stdout, "Verification Failed at instruction %d : %s\n", ipos, opcodes[m->code[ipos]].opcodeName);
 	exit(-1);
       }
-      if (tracingExecution & TRACE_VERIFY) {
-	fprintf(stdout, "Post Instruction ");
-	printInstructionInfo(&itable[ipos], m->max_locals, m->max_stack);
-      }
+	//if (tracingExecution & TRACE_VERIFY) {
+	//fprintf(stdout, "Post Instruction ");
+	//printInstructionInfo(&itable[ipos], m->max_locals, m->max_stack);
+	//}
 
     } while ( (ipos = findChangedInstruction(itable, ipos, m->code_length)) != -1 );
 
