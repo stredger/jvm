@@ -31,10 +31,13 @@ static void printConstantPool(ClassFile *cf) {
   char *cptypes[] = {"Unknown", "Asciz", "", "Integer", "Float",
 		     "Long", "Double", "Class", "String","Field",
 		     "Method", "Interface", "NameAndType"};
+  char *cpitem;
   int i;
   fprintf(stdout, "Constant Pool:\n");
   for (i = 1; i < cf->constant_pool_count; i++) {
-    fprintf(stdout, "  #%d: %s\t%s\n", i, cptypes[cf->cp_tag[i]], GetCPItemAsString(cf, i));
+    cpitem = GetCPItemAsString(cf, i);
+    fprintf(stdout, "  #%d: %s\t%s\n", i, cptypes[cf->cp_tag[i]], cpitem);
+    SafeFree(cpitem);
   }
 }
 
@@ -166,7 +169,7 @@ static int mergeState(InstructionInfo* oldi, InstructionInfo* newi, int typeArrL
 
 
 static int findChangedInstruction(InstructionInfo *itable, int ipos, int imax) {
-  int numchecked;
+  int numchecked = 0;
   while (numchecked < imax) {
     if (itable[ipos].state && itable[ipos].cbit) {
       if (tracingExecution & TRACE_VERIFY)
