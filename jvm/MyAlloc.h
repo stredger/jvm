@@ -22,7 +22,7 @@ extern void InitMyAlloc( int HeapSize );
 extern void *MyHeapAlloc( int size );
 extern void gc();
 extern void PrintHeapUsageStatistics();
-int isProbablePointer(HeapPointer pval);
+int isProbablePointer(void *real_heap_pointer);
 void mark();
 void sweep();
 
