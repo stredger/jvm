@@ -317,8 +317,26 @@ int isProbablePointer(HeapPointer pval) {
     return 1; // Return True
 }
 
-void mark() {
+
+void mark(HeapPointer block) {
+  uint32_t size, i;
+
+  // convert the offset to an actual pointer value
+  uint32_t *heapObject = REAL_HEAP_POINTER(block);
+  // back up 4 bytes to get at the size field of the block
+  uint32_t *markByte = heapObject - 1;
+  
+  if ( !(*markByte & MARKBIT) ) {
+    // we are not marked so, mark us and the pointers we contain
+    size = (*markByte - 4) / sizeof(uint32_t); // get the number of remaining 32bit spots
+    *markByte &= MARKBIT;
+    for (i = 0; i < size; i++) {
+      if ( isProbablePointer((HeapPointer) heapObject[i]) )
+	mark((HeapPointer) heapObject[i]);
+    }
+  }
 }
+
 
 void sweep() {
 }
