@@ -34,6 +34,7 @@
 #include "ClassFileFormat.h"
 #include "TraceOptions.h"
 #include "MyAlloc.h"
+#include "jvm.h"
 
 /* we will never allocate a block smaller than this */
 #define MINBLOCKSIZE 12
@@ -233,11 +234,62 @@ static void MyHeapFree(void *p) {
 void gc() {
     gcCount++;
     fprintf(stderr, "garbage collection is unimplemented\n");
+    
+
+    
+    // TEMP
+    printf("\nSTACK\n=====\n");
+    // END TEMP
+    
+    DataItem *Stack_Iterator = JVM_Top;
+    while(Stack_Iterator >= JVM_Stack) {
+        
+        // TEMP
+        printf("ival: %d uval: %d fval: %f pval: %u\n", Stack_Iterator->ival, Stack_Iterator->uval, Stack_Iterator->fval, Stack_Iterator->pval);
+        // END TEMP
+    
+        if(isProbablePointer(Stack_Iterator->pval)) {
+         
+             printf("Mark this bit(ch)\n");
+             printf("Recurse (this sh)it\n");
+        }
+        
+        Stack_Iterator--;
+    }
+      
+    
+    // TEMP
+    printf("\n");
+    // END TEMP
+    
+    
+    
     // The following lines of code exist only so that the compiler does not
     // generate a warning message that MyHeapFree is defined but not used.
     if (0) {
     	MyHeapFree(NULL);
     }
+}
+
+int isProbablePointer(HeapPointer pval) {
+    
+    printf("HeapStart %d HeapEnd %d\n", HeapStart, HeapEnd);
+    
+    // Pointer checks
+    if((uint8_t)pval >= HeapStart) {
+        return 0; // Return False
+    }
+    if((uint8_t)pval <= HeapEnd) {
+        return 0; // Return False
+    }
+    
+    return 1; // Return True
+}
+
+void mark() {
+}
+
+void sweep() {
 }
 
 
@@ -259,7 +311,6 @@ void PrintHeapUsageStatistics() {
         printf("  Average bytes recovered per gc = %.2f\n", avgRecovery);
     }
 }
-
 
 static void *trackHeapArea( void *p ) {
     if (p > maxAddr)

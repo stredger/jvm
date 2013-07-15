@@ -190,7 +190,7 @@ OpcodeDescription opcodes[] = {
 { 0X81, "lor",          "", "LlLl>Ll" }, /* bitwise or of two longs */
 { 0X82, "ixor",         "", "II>I" },   /* int xor */
 { 0X83, "lxor",         "", "LlLl>Ll" }, /* bitwise exclusive or of two longs */
-{ 0X84, "iinc",         "iiv", "" },    /* increment local variable #index by signed byte const */
+{ 0X84, "iinc",         "iv", "" },    /* increment local variable #index by signed byte const */
 { 0X85, "i2l",          "", "I>Ll" },   /* convert an int into a long */
 { 0X86, "i2f",          "", "I>Dd" },   /* convert an int into a float */
 { 0X87, "i2d",          "", "Ll>I" },   /* convert an int into a double */

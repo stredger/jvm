@@ -22,6 +22,9 @@ extern void InitMyAlloc( int HeapSize );
 extern void *MyHeapAlloc( int size );
 extern void gc();
 extern void PrintHeapUsageStatistics();
+int isProbablePointer(HeapPointer pval);
+void mark();
+void sweep();
 
 extern char *SafeStrdup( char *s );
 extern char *SafeStrcat( char *a, char *b );

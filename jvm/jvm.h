@@ -175,7 +175,8 @@ typedef enum { OP_aaload=0X32, OP_aastore=0X53, OP_aconst_null=0X01, OP_aload=0X
 } JVM_Opcode;
 
 
-extern DataItem *JVM_Top;
+extern DataItem *JVM_Top;           // Was here before
+extern DataItem *JVM_Stack;         // Added by me
 extern void *HeapReferencePointer;
 extern void *Fake_System_Out;
 
