@@ -276,10 +276,10 @@ void gc() {
     while(Stack_Iterator >= JVM_Stack) {
         
         // TEMP
-        printf("ival: %d uval: %d fval: %f pval: %u\n", Stack_Iterator->ival, Stack_Iterator->uval, Stack_Iterator->fval, Stack_Iterator->pval);
+        printf("ival: %d uval: %d fval: %f pval: %p\n", Stack_Iterator->ival, Stack_Iterator->uval, Stack_Iterator->fval, REAL_HEAP_POINTER(Stack_Iterator->pval));
         // END TEMP
     
-        if(isProbablePointer(Stack_Iterator->pval)) {
+        if(isProbablePointer(REAL_HEAP_POINTER(Stack_Iterator->pval))) {
          
              printf("Mark this bit(ch)\n");
              printf("Recurse (this sh)it\n");
@@ -302,15 +302,12 @@ void gc() {
     }
 }
 
-int isProbablePointer(HeapPointer pval) {
+int isProbablePointer(void *p) {
     
-    printf("HeapStart %d HeapEnd %d\n", HeapStart, HeapEnd);
+    printf("HeapStart %p HeapEnd %p\n", HeapStart, HeapEnd);
     
     // Pointer checks
-    if((uint8_t)pval >= HeapStart) {
-        return 0; // Return False
-    }
-    if((uint8_t)pval <= HeapEnd) {
+    if((int)p < (int)HeapStart || (int)p > (int)HeapEnd ) {
         return 0; // Return False
     }
     
