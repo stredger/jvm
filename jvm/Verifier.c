@@ -15,6 +15,7 @@
 #include "VerifierUtils.h"
 #include "Verifier.h"
 
+
 // Output an array of the verifier's type descriptors
 /*
 static void printTypeCodesArray( char **vstate, method_info *m, char *name ) {
@@ -46,7 +47,7 @@ static void printConstantPool(ClassFile *cf) {
     SafeFree(cpitem);
   }
 }
-
+/*
 // Prints all the instructions (and some non code places)
 static void printAllInstructions(method_info *m, char *name) {
   int i;
@@ -61,7 +62,7 @@ static void printAllInstructions(method_info *m, char *name) {
     i += strlen(opcodes[m->code[i]].inlineOperands); // Skip over inline operators
   }
 }
-
+*/
 
 // prints the stacksize, cbit, local variables, and stack of the instruction
 static void printInstructionInfo(InstructionInfo *iinfo, int localslen, int stacklen) {
@@ -1383,7 +1384,7 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
   case 0x9c: // ifge
   case 0x9d: // ifgt
   case 0x9e: // ifle
-    varnum = (m->code[ipos+1] << 8) + m->code[ipos+2];
+    varnum = (int16_t) (m->code[ipos+1] << 8) + m->code[ipos+2];
     if ( checkStackUnderflow(*stkSizePtr, 1) == -1 ||
 	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "I") == -1 )
       return -1;
@@ -1402,7 +1403,7 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
   case 0xa2: // if_icmpge
   case 0xa3: // if_icmpgt
   case 0xa4: // if_icmple
-    varnum = (m->code[ipos+1] << 8) + m->code[ipos+2];
+    varnum = (int16_t) (m->code[ipos+1] << 8) + m->code[ipos+2];
     if ( checkStackUnderflow(*stkSizePtr, 2) == -1 ||
 	 compareSimpleTypes(stackbase[*stkSizePtr - 1], "I") == -1 ||
 	 compareSimpleTypes(stackbase[*stkSizePtr - 2], "I") == -1 )
@@ -1419,7 +1420,7 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
 
   case 0xa5: // if_acmpeq
   case 0xa6: // if_acmpne
-    varnum = (m->code[ipos+1] << 8) + m->code[ipos+2];
+    varnum = (int16_t) (m->code[ipos+1] << 8) + m->code[ipos+2];
     if ( checkStackUnderflow(*stkSizePtr, 2) == -1 ||
 	 compareReferenceTypes(stackbase[*stkSizePtr - 1], "A") == -1 ||
 	 compareReferenceTypes(stackbase[*stkSizePtr - 2], "A") == -1 )
@@ -1428,13 +1429,13 @@ static int verifyOpcode(InstructionInfo *itable, ClassFile *cf, method_info *m, 
     stackbase[--(*stkSizePtr)] = "-";
     if ( checkCodePosition(ipos+3, m->code_length) == -1 ||
 	 checkCodePosition(ipos+varnum, m->code_length) == -1 ||
-	 updateInstruction(&itable[ipos], &itable[ipos+], typeArrSize) == -1 ||
+	 updateInstruction(&itable[ipos], &itable[ipos+3], typeArrSize) == -1 ||
 	 updateInstruction(&itable[ipos], &itable[ipos + varnum], typeArrSize) == -1 )
       return -1;
     break;
 
   case 0xa7: // goto
-    varnum = (m->code[ipos+1] << 8) + m->code[ipos+2];
+    varnum = (int16_t) (m->code[ipos+1] << 8) + m->code[ipos+2];
     if ( checkCodePosition(ipos + varnum, m->code_length) == -1 ||
 	 updateInstruction(&itable[ipos], &itable[ipos + varnum], typeArrSize) == -1 )
       return -1;
@@ -1891,8 +1892,8 @@ static void verifyMethod( ClassFile *cf, method_info *m ) {
       printConstantPool(cf);
 
 
-    if (tracingExecution & TRACE_VERIFY)
-      printAllInstructions(m, name);
+    //if (tracingExecution & TRACE_VERIFY)
+    //  printAllInstructions(m, name);
 
     //if (tracingExecution & TRACE_VERIFY)
     //  printTypeCodesArray(initState, m, name);
@@ -1903,18 +1904,13 @@ static void verifyMethod( ClassFile *cf, method_info *m ) {
 	fprintf(stdout, "Pre Instruction ");
 	printInstructionInfo(&itable[ipos], m->max_locals, m->max_stack);
       }
-
-	if ( verifyOpcode(itable, cf, m, ipos, retType) == -1 ) {
+      
+      if ( verifyOpcode(itable, cf, m, ipos, retType) == -1 ) {
 	fprintf(stderr, "Verification Failed at instruction %d : %s\n", ipos, opcodes[m->code[ipos]].opcodeName);
 	exit(-1);
       }
-	//	if (tracingExecution & TRACE_VERIFY) {
-	//fprintf(stdout, "Post Instruction ");
-	//printInstructionInfo(&itable[ipos], m->max_locals, m->max_stack);
-	//}
-
     } while ( (ipos = findChangedInstruction(itable, ipos, m->code_length)) != -1 );
-
+    
     FreeTypeDescriptorArray(initState, numSlots);
     SafeFree(name);
 }
@@ -1923,13 +1919,14 @@ static void verifyMethod( ClassFile *cf, method_info *m ) {
 // Verify the bytecode of all methods in class file cf
 void Verify( ClassFile *cf ) {
     int i;
-
-    for( i = 0;  i < cf->methods_count;  i++ ) {
+    if (VerifyingMethods) {
+      for( i = 0;  i < cf->methods_count;  i++ ) {
         method_info *m = &(cf->methods[i]);
-	    verifyMethod(cf, m);
-    }
-    if (tracingExecution & TRACE_VERIFY)
+	verifyMethod(cf, m);
+      }
+      if (tracingExecution & TRACE_VERIFY)
     	fprintf(stdout, "Verification of class %s completed\n\n", cf->cname);
+    }
 }
 
 

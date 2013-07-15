@@ -10,10 +10,29 @@ We do not handle the athrow opcode.
 We also do not handle inheritance in some cases (eg. aastore)
 
 
+Memory Leaks:
+Unfortunately we have a large number of memory leaks
+We were focused on the verification so we use a mix of static strings and stuff on the heap
+This made tracking when and when not to free quite complicated, so we decided instead of 
+aborting when trying to free memory not on the heap, that we would just print a warning.
+
+
+
+JVM State Woes:
+Our JVM state is handled incorrectly is some cases,
+We keep the state associated with the opcode, unfortunately when the opcode changes the state
+it keeps the changed state instead of reverting to the state it had before the opcodes execution.
+ie. iload will have the I on the stack for a state, even though it didnt before. 
+
+This makes some brnaching statements fail verification.
+We could resolve this by manipulating a temporary state and leacving 
+the opcodes initial state alone, but unfortunately never impelented this solution.
+
+
 
 Issues:
   - Array Syntax:
-      - There is different formats everywhere 
+      - There are different formats everywhere 
             LL vs. L vs. J
             DD vs. D
             A[ALMyClass vs. A[LMyClass

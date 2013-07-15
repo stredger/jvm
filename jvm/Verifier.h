@@ -11,9 +11,10 @@ typedef struct {
   int stksize;
 } InstructionInfo;
 
-
-
 extern void Verify( ClassFile *cf );
 extern void InitVerifier(void);
+
+// global flag to switch verification on and off
+static int VerifyingMethods = 0;
 
 #endif

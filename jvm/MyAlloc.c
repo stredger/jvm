@@ -38,6 +38,13 @@
 /* we will never allocate a block smaller than this */
 #define MINBLOCKSIZE 12
 
+/* this pattern will appear in blocks in the freelist  */
+#define FREELISTBITPATTERN 0xF7EE
+
+/* this is the bitmask for the mark bit */
+#define MARKBIT 0x8000
+
+
 typedef struct FreeStorageBlock {
     uint32_t size;  /* size in bytes of this block of storage */
     int32_t  offsetToNextBlock;
@@ -209,6 +216,11 @@ static void MyHeapFree(void *p) {
     /* link the block into the free list at the front */
     blockPtr = (FreeStorageBlock*)p1;
     blockPtr->offsetToNextBlock = offsetToFirstBlock;
+
+    // add bit pattern for stuff in freelist
+    uint32_t* bp = (uint32_t*) blockPtr->restOfBlock;
+    *bp = FREELISTBITPATTERN;
+    
     offsetToFirstBlock = p1 - HeapStart;
 }
 
@@ -304,7 +316,7 @@ void SafeFree( void *p ) {
     if (p == NULL || ((int)p & 0x7) != 0) {
         fprintf(stderr, "Fatal error: invalid parameter passed to SafeFree\n");
         fprintf(stderr, "    The address was NULL or misaligned\n");
-        abort();
+	abort();
     }
     if (p >= minAddr && p <= maxAddr)
         free(p);
