@@ -68,6 +68,37 @@ static void *maxAddr = NULL;    // used by SafeMalloc, etc
 static void *minAddr = NULL;
 
 
+
+/* prints a byte in readable format, ie. xxxx xxxx */
+static void printByte(char byte) {
+  int i;
+  uint8_t mask = 0x01 << 7;
+  for (i = 7; i >= 0; i--, mask=mask>>1) {
+    if (i == 3)
+      printf(" ");
+    if (byte & mask)
+      printf("1");
+    else
+      printf("0");
+  }
+  printf("\n");
+}
+
+/* Prints the bits of a given value in a readable format.
+   Expects 'numBytes' to be the number of bytes pointed to by 'val'.
+   Note: bits will be printed as they are stored in mem, watch
+   for endianness */
+static void printBits(char *val, int numBytes) {
+  printf("Printing %d bytes starting at address %p\n",
+	 numBytes, (void*) val);
+  for( ; numBytes > 0; numBytes-- ) {
+    printf("\t");
+    printByte(*val++);
+  }
+}
+
+
+
 /* Allocate the Java heap and initialize the free list */
 void InitMyAlloc( int HeapSize ) {
     FreeStorageBlock *FreeBlock;
