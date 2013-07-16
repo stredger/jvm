@@ -39,10 +39,13 @@
 /* we will never allocate a block smaller than this */
 #define MINBLOCKSIZE 12
 
+/* or larger than this! */
+#define MAXBLOCKSIZE (~0x80000000)
+
 /* this pattern will appear in blocks in the freelist  */
 #define FREELISTBITPATTERN 0xF7EE
 
-/* this is the bitmask for the mark bit */
+/* this is the 32 bit bitmask for the mark bit */
 #define MARKBIT 0x80000000
 
 
@@ -316,38 +319,50 @@ void gc() {
 int isProbablePointer(void *p) {
     
   //printf("HeapStart %p HeapEnd %p\n", HeapStart, HeapEnd);
-    
-    // Pointer checks
-  if((int)p < (int)HeapStart || (int)p > (int)HeapEnd ) {
-        return 0; // Return False
-    }
-    
-    return 1; // Return True
+
+  if ( (uint8_t) p % 4 ) {
+    return 0; // we are not 4 byte alligned
+  }
+
+  // Pointer checks
+  if ( p < (void*)(HeapStart + 4) || 
+       p > ( (void*)(HeapEnd - MINBLOCKSIZE) )) {
+    return 0; // Return False
+  }
+
+  // check the block has a valid size
+  uint32_t blockSize = *( ((uint32_t*) p) - 1 );
+  if (blockSize > MAXBLOCKSIZE || blockSize + p > (void*)HeapEnd) {
+    return 0;
+  }
+
+  return 1; // Return True
 }
 
 
 void mark(uint32_t *block) {
   uint32_t size, i;
 
-  //printf("mark(): Checking ptr %p\n", block);
+  printf("mark(): Checking ptr %p\n", block);
 
   // back up 4 bytes to get at the size field of the block
   uint32_t *blockMetadata = block - 1;
-  printBits(blockMetadata, 4);
+  //printBits(blockMetadata, 4);
 
   if ( !(*blockMetadata & MARKBIT) ) {
-
     printf("mark(): Marking ptr %p\n", block);
-
     size = (*blockMetadata - 4) / sizeof(uint32_t); // get the number of remaining 32bit spots
-    printf("size: %d\n", size*4 + 4);
+    //printf("size: %d\n", size*4 + 4);
     *blockMetadata |= MARKBIT;
-    printBits(blockMetadata, 4);
+    //printBits(blockMetadata, 4);
     for (i = 0; i < size; i++) {
+      //printf("pos: %d, size: %d, block[i]: %d, ptr: %p\n", i, size, block[i], REAL_HEAP_POINTER(block[i]));
       if ( isProbablePointer((uint32_t*) REAL_HEAP_POINTER(block[i])) ) {
+	mark((uint32_t*) REAL_HEAP_POINTER(block[i]));
       }
-	//mark((uint32_t*) REAL_HEAP_POINTER(block[i]));
     }
+  } else {
+    printf("mark(): Ptr %p already marked\n", block);
   }
 }
 
