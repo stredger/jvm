@@ -113,7 +113,7 @@ static void printBlock(void *p) {
         printf("    ");
         printByte(*bytePtr++);
     }
-    printf("\tSize\n");
+    printf("\tSize (=%d)\n", ~MARKBIT & *(uint32_t *)p);
     
     for(i = 0; i < 4; i++) {
         printf("    ");
@@ -133,6 +133,11 @@ static void printBlock(void *p) {
         printByte(*bytePtr++);
     }
     printf("\tContent (if active or garbage) / FreePattern (if free)\n");
+    
+    printf("    ...");
+    for(i=0; i<49; i++)
+        printf(" ");
+    printf("Possibly more content\n");
     
 }
 
@@ -405,7 +410,7 @@ void sweep() {
         printBlock(REAL_HEAP_POINTER(Heap_Iterator));
         
         if(!(MARKBIT & *(uint32_t *)REAL_HEAP_POINTER(Heap_Iterator))) {
-            printf("Not marked\n");
+            printf("Not marked\n\n");
             
             
             
