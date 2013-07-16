@@ -115,7 +115,8 @@ void InitMyAlloc( int HeapSize ) {
     FreeBlock = (FreeStorageBlock*)HeapStart;
     FreeBlock->size = HeapSize;
     FreeBlock->offsetToNextBlock = -1;  /* marks end of list */
-    offsetToFirstBlock = 0;
+    offsetToFirstBlock = 0; 
+    
     
     // Used bu SafeMalloc, SafeCalloc, SafeFree below
     maxAddr = minAddr = malloc(4);  // minimal small request to get things started
@@ -211,6 +212,7 @@ void *MyHeapAlloc( int size ) {
             prevBlockPtr->offsetToNextBlock += minSizeNeeded;
         newBlockPtr->size = diff;
         newBlockPtr->offsetToNextBlock = blockPtr->offsetToNextBlock;
+        
         if (tracingExecution & TRACE_HEAP)
             fprintf(stdout, "* free list block of size %d split into %d + %d\n",
 		    diff+minSizeNeeded, minSizeNeeded, diff);
@@ -281,8 +283,8 @@ void gc() {
     
         if(isProbablePointer(REAL_HEAP_POINTER(Stack_Iterator->pval))) {
 	  
-	  printf("Mark this bit(ch)\n");
-	  printf("Recurse (this sh)it\n");
+            printf("Mark this bit(ch)\n");
+            printf("Recurse (this sh)it\n");
         }
         
         Stack_Iterator--;
@@ -291,6 +293,7 @@ void gc() {
     
     // TEMP
     printf("\n");
+    sweep();
     // END TEMP
     
     
@@ -344,6 +347,18 @@ void mark(uint8_t *block) {
 
 
 void sweep() {
+    
+    printf("\nHEAP\n====\n");
+    
+    HeapPointer Heap_Iterator = 0;
+    while(Heap_Iterator < MaxHeapPtr) {
+        printf("%p ", REAL_HEAP_POINTER(Heap_Iterator));
+        printf("%d\n",~MARKBIT & *(uint32_t *)REAL_HEAP_POINTER(Heap_Iterator));
+        
+        Heap_Iterator += ~MARKBIT & *(uint32_t *)REAL_HEAP_POINTER(Heap_Iterator);
+        
+        //printBits((char *)REAL_HEAP_POINTER(Heap_Iterator), sizeof(HeapPointer));
+    }  
 }
 
 
