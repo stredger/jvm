@@ -162,6 +162,7 @@ void InitMyAlloc( int HeapSize ) {
     FreeBlock = (FreeStorageBlock*)HeapStart;
     FreeBlock->size = HeapSize;
     FreeBlock->offsetToNextBlock = -1;  /* marks end of list */
+    *(uint32_t *)FreeBlock->restOfBlock = FREELISTBITPATTERN;
     offsetToFirstBlock = 0;
     
     // Used bu SafeMalloc, SafeCalloc, SafeFree below
@@ -267,6 +268,8 @@ void *MyHeapAlloc( int size ) {
             prevBlockPtr->offsetToNextBlock += minSizeNeeded;
         newBlockPtr->size = diff;
         newBlockPtr->offsetToNextBlock = blockPtr->offsetToNextBlock;
+        *(uint32_t *)newBlockPtr->restOfBlock = FREELISTBITPATTERN;
+        printBits(newBlockPtr->restOfBlock, 4);
         
         if (tracingExecution & TRACE_HEAP)
             fprintf(stdout, "* free list block of size %d split into %d + %d\n",
@@ -275,6 +278,9 @@ void *MyHeapAlloc( int size ) {
     blockPtr->offsetToNextBlock = 0;  /* remove this info from the returned block */
     totalBytesRequested += minSizeNeeded;
     numAllocations++;
+    
+    // Remove "Free" code
+    *(uint32_t *)blockPtr->restOfBlock = 0;
 
     return (uint8_t*)blockPtr + sizeof(blockPtr->size);
 }
@@ -433,16 +439,6 @@ void sweep() {
     
     HeapPointer Heap_Iterator = 0;
     while(Heap_Iterator < MaxHeapPtr) {
-        //printf("%p ", REAL_HEAP_POINTER(Heap_Iterator));
-        //printf("%d ", *(uint32_t *)REAL_HEAP_POINTER(Heap_Iterator));
-        //printf("%d\n\t", ~MARKBIT & *(uint32_t *)REAL_HEAP_POINTER(Heap_Iterator));
-        
-        //printBits(REAL_HEAP_POINTER(Heap_Iterator), 4);
-        //printf("\n\t");
-        
-        uint32_t temp = ~MARKBIT & *(uint32_t *)REAL_HEAP_POINTER(Heap_Iterator);
-        
-        //printBits((void *) &temp, 4);
 
         
         printBlock(REAL_HEAP_POINTER(Heap_Iterator));
@@ -450,21 +446,22 @@ void sweep() {
         if(!(MARKBIT & *(uint32_t *)REAL_HEAP_POINTER(Heap_Iterator))) {
             printf("Not marked\n\n");
             
+            if(FREELISTBITPATTERN != *(uint32_t *)REAL_HEAP_POINTER(Heap_Iterator + 8)) {
             
-            
+                printf("Freeing block at %p\n", REAL_HEAP_POINTER(Heap_Iterator)); 
+                MyHeapFree(REAL_HEAP_POINTER(Heap_Iterator + 4));
+            }
+ 
         }
         else {
             printf("Marked!\n\n");
         }
-        
-        
-        
-        // Move to next block/object
+
+        // Move 'size' bytes to next block (ignoring the Mark Bit when determining size)
         Heap_Iterator += ~MARKBIT & *(uint32_t *)REAL_HEAP_POINTER(Heap_Iterator);
         
         //printBits((char *)REAL_HEAP_POINTER(Heap_Iterator), sizeof(HeapPointer));
     }
-
 }
 
 
