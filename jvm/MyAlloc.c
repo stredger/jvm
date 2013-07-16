@@ -98,10 +98,42 @@ static void printBits(void *val, int numBytes) {
     else if (i == 0)
       printf("\t");
     else
-      printf("\n\t");
-    printByte(*bytePtr++);
+      printf("\t");
+    
   }
   printf("\n");
+}
+
+static void printBlock(void *p) {
+    printf("Address: %p\n", p);
+    
+    char *bytePtr = (char*) p;
+    int i;
+    for(i = 0; i < 4; i++) {
+        printf("    ");
+        printByte(*bytePtr++);
+    }
+    printf("\tSize\n");
+    
+    for(i = 0; i < 4; i++) {
+        printf("    ");
+        printByte(*bytePtr++);
+    }
+    
+    if((MARKBIT & *(uint32_t *)p)) {
+         printf("\tContent\n");
+    }
+    else {
+        printf("\tContent (if garbage) / Reference to next free block (if free)\n");
+    }
+    
+    
+    for(i = 0; i < 4; i++) {
+        printf("    ");
+        printByte(*bytePtr++);
+    }
+    printf("\tContent (if active or garbage) / FreePattern (if free)\n");
+    
 }
 
 
@@ -358,16 +390,33 @@ void sweep() {
     
     HeapPointer Heap_Iterator = 0;
     while(Heap_Iterator < MaxHeapPtr) {
-        printf("%p ", REAL_HEAP_POINTER(Heap_Iterator));
-        printf("%d ", *(uint32_t *)REAL_HEAP_POINTER(Heap_Iterator));
-        printf("%d\n\t", ~MARKBIT & *(uint32_t *)REAL_HEAP_POINTER(Heap_Iterator));
+        //printf("%p ", REAL_HEAP_POINTER(Heap_Iterator));
+        //printf("%d ", *(uint32_t *)REAL_HEAP_POINTER(Heap_Iterator));
+        //printf("%d\n\t", ~MARKBIT & *(uint32_t *)REAL_HEAP_POINTER(Heap_Iterator));
         
-        printByte(*(char *)REAL_HEAP_POINTER(Heap_Iterator), 4);
-        printf("\n\t");
+        //printBits(REAL_HEAP_POINTER(Heap_Iterator), 4);
+        //printf("\n\t");
         
-        printByte(~MARKBIT & *(uint32_t *)REAL_HEAP_POINTER(Heap_Iterator) , 4);
-        printf("\n");
+        uint32_t temp = ~MARKBIT & *(uint32_t *)REAL_HEAP_POINTER(Heap_Iterator);
         
+        //printBits((void *) &temp, 4);
+
+        
+        printBlock(REAL_HEAP_POINTER(Heap_Iterator));
+        
+        if(!(MARKBIT & *(uint32_t *)REAL_HEAP_POINTER(Heap_Iterator))) {
+            printf("Not marked\n");
+            
+            
+            
+        }
+        else {
+            printf("Marked!\n\n");
+        }
+        
+        
+        
+        // Move to next block/object
         Heap_Iterator += ~MARKBIT & *(uint32_t *)REAL_HEAP_POINTER(Heap_Iterator);
         
         //printBits((char *)REAL_HEAP_POINTER(Heap_Iterator), sizeof(HeapPointer));
