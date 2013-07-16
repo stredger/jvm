@@ -213,12 +213,14 @@ void *MyHeapAlloc( int size ) {
         newBlockPtr->offsetToNextBlock = blockPtr->offsetToNextBlock;
         if (tracingExecution & TRACE_HEAP)
             fprintf(stdout, "* free list block of size %d split into %d + %d\n",
-                diff+minSizeNeeded, minSizeNeeded, diff);
-
+		    diff+minSizeNeeded, minSizeNeeded, diff);
     }
     blockPtr->offsetToNextBlock = 0;  /* remove this info from the returned block */
     totalBytesRequested += minSizeNeeded;
     numAllocations++;
+
+    mark( (uint8_t*)blockPtr + sizeof(blockPtr->size));
+
     return (uint8_t*)blockPtr + sizeof(blockPtr->size);
 }
 
@@ -304,7 +306,7 @@ void gc() {
 
 int isProbablePointer(void *p) {
     
-    printf("HeapStart %p HeapEnd %p\n", HeapStart, HeapEnd);
+  //printf("HeapStart %p HeapEnd %p\n", HeapStart, HeapEnd);
     
     // Pointer checks
     if((int)p < (int)HeapStart || (int)p > (int)HeapEnd ) {
@@ -315,21 +317,29 @@ int isProbablePointer(void *p) {
 }
 
 
-void mark(HeapPointer block) {
+void mark(uint8_t *block) {
   uint32_t size, i;
 
+  printf("mark(): Checking ptr %p\n", block);
+
   // convert the offset to an actual pointer value
-  uint32_t *heapObject = REAL_HEAP_POINTER(block);
+  uint8_t *heapObject = block; //REAL_HEAP_POINTER(block);
   // back up 4 bytes to get at the size field of the block
-  uint32_t *markByte = heapObject - 1;
-  
-  if ( !(*markByte & MARKBIT) ) {
+  uint32_t *blockMetadata = (uint32_t*) (heapObject - 4);
+  printBits(blockMetadata, 4);
+  i = MARKBIT;
+  printBits(&i, 4);
+  if ( !(*blockMetadata & MARKBIT) ) {
+
+    printf("mark(): Marking ptr %p\n", block);
+
     // we are not marked so, mark us and the pointers we contain
-    size = (*markByte - 4) / sizeof(uint32_t); // get the number of remaining 32bit spots
-    *markByte &= MARKBIT;
+    size = (*blockMetadata - 4) / sizeof(uint8_t); // get the number of remaining 32bit spots
+    *blockMetadata |= MARKBIT;
+    printBits(blockMetadata, 4);
     for (i = 0; i < size; i++) {
-      if ( isProbablePointer((HeapPointer) heapObject[i]) )
-	mark((HeapPointer) heapObject[i]);
+      if ( isProbablePointer((uint8_t*) heapObject[i]) )
+	mark((uint8_t*) heapObject[i]);
     }
   }
 }

@@ -2,6 +2,6 @@
 
 #include "TraceOptions.h"
 
-int tracingExecution = TRACE_ALL;
+int tracingExecution = TRACE_HEAP;
 int showWarnings = 1;
 
