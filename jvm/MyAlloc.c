@@ -219,8 +219,6 @@ void *MyHeapAlloc( int size ) {
     totalBytesRequested += minSizeNeeded;
     numAllocations++;
 
-    mark( (uint8_t*)blockPtr + sizeof(blockPtr->size));
-
     return (uint8_t*)blockPtr + sizeof(blockPtr->size);
 }
 
@@ -282,9 +280,9 @@ void gc() {
         // END TEMP
     
         if(isProbablePointer(REAL_HEAP_POINTER(Stack_Iterator->pval))) {
-         
-             printf("Mark this bit(ch)\n");
-             printf("Recurse (this sh)it\n");
+	  
+	  printf("Mark this bit(ch)\n");
+	  printf("Recurse (this sh)it\n");
         }
         
         Stack_Iterator--;
