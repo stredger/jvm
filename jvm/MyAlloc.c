@@ -40,10 +40,10 @@
 #define MINBLOCKSIZE 12
 
 /* or larger than this! */
-#define MAXBLOCKSIZE (~0x80000000)
+#define MAXBLOCKSIZE (((uint32_t)(~0x80000000)) - 4)
 
 /* this pattern will appear in blocks in the freelist  */
-#define FREELISTBITPATTERN 0xF7EE
+#define FREELISTBITPATTERN 0x0BADA550 //0xF7EE
 
 /* this is the 32 bit bitmask for the mark bit */
 #define MARKBIT 0x80000000
@@ -124,8 +124,7 @@ void InitMyAlloc( int HeapSize ) {
     FreeBlock = (FreeStorageBlock*)HeapStart;
     FreeBlock->size = HeapSize;
     FreeBlock->offsetToNextBlock = -1;  /* marks end of list */
-    offsetToFirstBlock = 0; 
-    
+    offsetToFirstBlock = 0;
     
     // Used bu SafeMalloc, SafeCalloc, SafeFree below
     maxAddr = minAddr = malloc(4);  // minimal small request to get things started
@@ -151,10 +150,14 @@ void *MyHeapAlloc( int size ) {
     FreeStorageBlock *blockPtr, *prevBlockPtr, *newBlockPtr;
     int minSizeNeeded = (size + sizeof(blockPtr->size) + 3) & 0xfffffffc;
 
-
-    // we use the top bit for marking and therefor our size 
-    //  is bound to be between 0 and 2^31
-
+    // we use the top bit for marking and therefore our size 
+    //  is bound to be between 0 and 2^31-1
+    if (size < MINBLOCKSIZE || size > MAXBLOCKSIZE) {
+      fprintf(stderr, 
+	      "request for invalid amount of heap - req: %d, max: %d, min: %d\n",
+	      size, MAXBLOCKSIZE, MINBLOCKSIZE);
+      exit(1);
+    }
 
     if (tracingExecution & TRACE_HEAP)
         fprintf(stdout, "* heap allocation request of size %d (augmented to %d)\n",
