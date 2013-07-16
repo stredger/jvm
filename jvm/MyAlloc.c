@@ -425,17 +425,23 @@ void sweep() {
         printBlock(REAL_HEAP_POINTER(Heap_Iterator));
         
         if(!(MARKBIT & *(uint32_t *)REAL_HEAP_POINTER(Heap_Iterator))) {
-            printf("Not marked\n\n");
+            printf("Not marked\n");
             
             if(FREELISTBITPATTERN != *(uint32_t *)REAL_HEAP_POINTER(Heap_Iterator + 8)) {
             
-                printf("Freeing block at %p\n", REAL_HEAP_POINTER(Heap_Iterator)); 
+                printf("Freeing block at %p\n\n", REAL_HEAP_POINTER(Heap_Iterator)); 
                 MyHeapFree(REAL_HEAP_POINTER(Heap_Iterator + 4));
+                
+                // Statistics tracking
+                totalBytesRecovered += *(uint32_t *)REAL_HEAP_POINTER(Heap_Iterator);
+                totalBlocksRecovered++;
             }
  
         }
-        else {
+        else { 
             printf("Marked!\n\n");
+            // Unmark
+            *(uint32_t *)REAL_HEAP_POINTER(Heap_Iterator) &= ~MARKBIT;
         }
 
         // Move 'size' bytes to next block (ignoring the Mark Bit when determining size)
