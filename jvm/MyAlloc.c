@@ -81,7 +81,6 @@ static void printByte(char byte) {
     else
       printf("0");
   }
-  printf("\n");
 }
 
 /* Prints the bits of a given value in a readable format.
@@ -91,10 +90,17 @@ static void printByte(char byte) {
 static void printBits(char *val, int numBytes) {
   printf("Printing %d bytes starting at address %p\n",
 	 numBytes, (void*) val);
-  for( ; numBytes > 0; numBytes-- ) {
-    printf("\t");
+  int i;
+  for (i = 0; i < numBytes; i++) {
+    if ( i % 2 )
+      printf("   ");
+    else if (i == 0)
+      printf("\t");
+    else
+      printf("\n\t");
     printByte(*val++);
   }
+  printf("\n");
 }
 
 
@@ -280,8 +286,8 @@ void gc() {
         // END TEMP
     
         if(isProbablePointer(REAL_HEAP_POINTER(Stack_Iterator->pval))) {
-	  
-	  printf("Mark this bit(ch)\n");
+	  mark(REAL_HEAP_POINTER(Stack_Iterator->pval));
+	  //printf("Mark this bit(ch)\n");
 	  printf("Recurse (this sh)it\n");
         }
         
@@ -321,20 +327,19 @@ void mark(uint8_t *block) {
   printf("mark(): Checking ptr %p\n", block);
 
   // convert the offset to an actual pointer value
-  uint8_t *heapObject = block; //REAL_HEAP_POINTER(block);
+  uint32_t *heapObject = (uint32_t*) block; //REAL_HEAP_POINTER(block);
   // back up 4 bytes to get at the size field of the block
-  uint32_t *blockMetadata = (uint32_t*) (heapObject - 4);
-  printBits(blockMetadata, 4);
-  i = MARKBIT;
-  printBits(&i, 4);
+  uint32_t *blockMetadata = heapObject - 1;
+  //printBits(blockMetadata, 4);
+
   if ( !(*blockMetadata & MARKBIT) ) {
 
     printf("mark(): Marking ptr %p\n", block);
 
     // we are not marked so, mark us and the pointers we contain
-    size = (*blockMetadata - 4) / sizeof(uint8_t); // get the number of remaining 32bit spots
+    size = (*blockMetadata - 4) / sizeof(uint32_t); // get the number of remaining 32bit spots
     *blockMetadata |= MARKBIT;
-    printBits(blockMetadata, 4);
+    //printBits(blockMetadata, 4);
     for (i = 0; i < size; i++) {
       if ( isProbablePointer((uint8_t*) heapObject[i]) )
 	mark((uint8_t*) heapObject[i]);
