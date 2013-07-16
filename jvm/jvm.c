@@ -25,7 +25,6 @@ void JVM_Init( int stackSize ) {
     JVM_StackLimit = JVM_Stack + JVM_StackSize - 1;
     JVM_Top = JVM_Stack;
     JVM_Top->uval = UNINIT_PATTERN;  /* fake item on bottom of stack */
-	printf("-----------ALLOC HOMIE\n");
     x = MyHeapAlloc(sizeof(ClassInstance));
     Fake_System_Out = x;
     x->kind = CODE_INST;
