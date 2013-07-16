@@ -43,7 +43,7 @@
 #define FREELISTBITPATTERN 0xF7EE
 
 /* this is the bitmask for the mark bit */
-#define MARKBIT 0x8000
+#define MARKBIT 0x80000000
 
 
 typedef struct FreeStorageBlock {
@@ -355,7 +355,14 @@ void sweep() {
     HeapPointer Heap_Iterator = 0;
     while(Heap_Iterator < MaxHeapPtr) {
         printf("%p ", REAL_HEAP_POINTER(Heap_Iterator));
-        printf("%d\n",~MARKBIT & *(uint32_t *)REAL_HEAP_POINTER(Heap_Iterator));
+        printf("%d ", *(uint32_t *)REAL_HEAP_POINTER(Heap_Iterator));
+        printf("%d\n\t", ~MARKBIT & *(uint32_t *)REAL_HEAP_POINTER(Heap_Iterator));
+        
+        printByte(*(char *)REAL_HEAP_POINTER(Heap_Iterator), 4);
+        printf("\n\t");
+        
+        printByte(~MARKBIT & *(uint32_t *)REAL_HEAP_POINTER(Heap_Iterator) , 4);
+        printf("\n");
         
         Heap_Iterator += ~MARKBIT & *(uint32_t *)REAL_HEAP_POINTER(Heap_Iterator);
         
