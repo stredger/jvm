@@ -385,6 +385,8 @@ int isProbablePointer(void *p) {
     
 	//printf("HeapStart %p HeapEnd %p\n", HeapStart, HeapEnd);
 	
+	printf("pointer: %p\n", p);
+
 	if ( (uint8_t) p % 4 ) {
 		return 0; // we are not 4 byte alligned
 	}
@@ -397,9 +399,10 @@ int isProbablePointer(void *p) {
 	
 	// check the block has a valid size
 	uint32_t blockSize = *( ((uint32_t*) p) - 1 );
-	if (blockSize > MAXBLOCKSIZE || blockSize + p > (void*)HeapEnd) {
+	if (blockSize > MAXBLOCKSIZE || blockSize < MINBLOCKSIZE) {
 		return 0;
 	}
+	
 
 	return 1; // Return True
 }
@@ -417,11 +420,11 @@ void mark(uint32_t *block) {
 	if ( !(*blockMetadata & MARKBIT) ) {
 		printf("mark(): Marking ptr %p\n", block);
 		size = (*blockMetadata - 4) / sizeof(uint32_t); // get the number of remaining 32bit spots
-		//printf("size: %d\n", size*4 + 4);
+		printf("size: %d, numEntires: %d\n", size*4 + 4, size);
 		*blockMetadata |= MARKBIT;
 		//printBits(blockMetadata, 4);
 		for (i = 0; i < size; i++) {
-			//printf("pos: %d, size: %d, block[i]: %d, ptr: %p\n", i, size, block[i], REAL_HEAP_POINTER(block[i]));
+			printf("pos: %d, size: %d, block[i]: %d, ptr: %p\n", i, size, block[i], REAL_HEAP_POINTER(block[i]));
 			// might not want to call REAL_HEAP_POINTER here
 			if ( isProbablePointer((uint32_t*) REAL_HEAP_POINTER(block[i])) ) {
 				mark((uint32_t*) REAL_HEAP_POINTER(block[i]));

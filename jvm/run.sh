@@ -1,3 +1,3 @@
 #! /bin/bash
 
-./MyJVM test/gc/AllocTest
+./MyJVM test/gc/LinkedList
