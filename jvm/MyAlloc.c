@@ -32,6 +32,7 @@
 #include <stdint.h>
 
 #include "ClassFileFormat.h"
+#include "ClassResolver.h"
 #include "TraceOptions.h"
 #include "MyAlloc.h"
 #include "jvm.h"
@@ -74,16 +75,16 @@ static void *minAddr = NULL;
 
 /* prints a byte in readable format, ie. xxxx xxxx */
 static void printByte(char byte) {
-  int i;
-  uint8_t mask = 0x01 << 7;
-  for (i = 7; i >= 0; i--, mask=mask>>1) {
-    if (i == 3)
-      printf(" ");
-    if (byte & mask)
-      printf("1");
-    else
-      printf("0");
-  }
+	int i;
+	uint8_t mask = 0x01 << 7;
+	for (i = 7; i >= 0; i--, mask=mask>>1) {
+		if (i == 3)
+			printf(" ");
+		if (byte & mask)
+			printf("1");
+		else
+			printf("0");
+	}
 }
 
 /* Prints the bits of a given value in a readable format.
@@ -91,21 +92,20 @@ static void printByte(char byte) {
    Note: bits will be printed as they are stored in mem, watch
    for endianness */
 static void printBits(void *val, int numBytes) {
-  printf("Printing %d bytes starting at address %p\n",
-	 numBytes, val);
-  int i;
-  char *bytePtr = (char*) val;
-  for (i = 0; i < numBytes; i++) {
-    if ( i % 2 )
-      printf("   ");
-    else if (i == 0)
-      printf("\t");
-    else
-      printf("\t");
-    printByte(*bytePtr++);
-    
-  }
-  printf("\n");
+	printf("Printing %d bytes starting at address %p\n",
+		   numBytes, val);
+	int i;
+	char *bytePtr = (char*) val;
+	for (i = 0; i < numBytes; i++) {
+		if ( i % 2 )
+			printf("   ");
+		else if (i == 0)
+			printf("\t");
+		else
+			printf("\t");
+		
+	}
+	printf("\n");
 }
 
 static void printBlock(void *p) {
@@ -295,7 +295,7 @@ static void MyHeapFree(void *p) {
     uint8_t *p1 = (uint8_t*)p;
     int blockSize;
     FreeStorageBlock *blockPtr;
-
+	
     if (p1 < HeapStart || p1 >= HeapEnd || ((p1-HeapStart) & 3) != 0) {
         fprintf(stderr, "bad call to MyHeapFree -- bad pointer\n");
         exit(1);
@@ -329,6 +329,24 @@ void gc() {
     gcCount++;
     fprintf(stderr, "garbage collection is unimplemented\n");
     
+    // TEMP
+    printf("\nCLASSFILES\n=====\n");
+    // END TEMP
+
+
+	// We must mark this fake file descriptor
+	mark(Fake_System_Out);
+
+	// The class list is a linked list so mark, being recursive,
+	//  should get all the class files on the heap. However, to
+	//  be really safe call mark on all the classfiles manually
+	ClassType *ct = FirstLoadedClass;
+	while (ct) {
+		mark(ct);
+		printf("class: %p, nextclass: %p\n", ct, ct->nextClass);
+		ct = ct->nextClass;
+	}
+	// mark(FirstLoadedClass); // use this when we want speed!
 
     
     // TEMP
@@ -365,57 +383,58 @@ void gc() {
 
 int isProbablePointer(void *p) {
     
-  //printf("HeapStart %p HeapEnd %p\n", HeapStart, HeapEnd);
+	//printf("HeapStart %p HeapEnd %p\n", HeapStart, HeapEnd);
+	
+	if ( (uint8_t) p % 4 ) {
+		return 0; // we are not 4 byte alligned
+	}
+	
+	// Pointer checks
+	if ( p < (void*)(HeapStart + 4) || 
+		 p > ( (void*)(HeapEnd - MINBLOCKSIZE) )) {
+		return 0; // Return False
+	}
+	
+	// check the block has a valid size
+	uint32_t blockSize = *( ((uint32_t*) p) - 1 );
+	if (blockSize > MAXBLOCKSIZE || blockSize + p > (void*)HeapEnd) {
+		return 0;
+	}
 
-  if ( (uint8_t) p % 4 ) {
-    return 0; // we are not 4 byte alligned
-  }
-
-  // Pointer checks
-  if ( p < (void*)(HeapStart + 4) || 
-       p > ( (void*)(HeapEnd - MINBLOCKSIZE) )) {
-    return 0; // Return False
-  }
-
-  // check the block has a valid size
-  uint32_t blockSize = *( ((uint32_t*) p) - 1 );
-  if (blockSize > MAXBLOCKSIZE || blockSize + p > (void*)HeapEnd) {
-    return 0;
-  }
-
-  return 1; // Return True
+	return 1; // Return True
 }
 
 
 void mark(uint32_t *block) {
-  uint32_t size, i;
-
-  printf("mark(): Checking ptr %p\n", block);
-
-  // back up 4 bytes to get at the size field of the block
-  uint32_t *blockMetadata = block - 1;
-  //printBits(blockMetadata, 4);
-
-  if ( !(*blockMetadata & MARKBIT) ) {
-    printf("mark(): Marking ptr %p\n", block);
-    size = (*blockMetadata - 4) / sizeof(uint32_t); // get the number of remaining 32bit spots
-    //printf("size: %d\n", size*4 + 4);
-    *blockMetadata |= MARKBIT;
-    //printBits(blockMetadata, 4);
-    for (i = 0; i < size; i++) {
-      //printf("pos: %d, size: %d, block[i]: %d, ptr: %p\n", i, size, block[i], REAL_HEAP_POINTER(block[i]));
-      if ( isProbablePointer((uint32_t*) REAL_HEAP_POINTER(block[i])) ) {
-	mark((uint32_t*) REAL_HEAP_POINTER(block[i]));
-      }
-    }
-  } else {
-    printf("mark(): Ptr %p already marked\n", block);
-  }
+	uint32_t size, i;
+	
+	printf("mark(): Checking ptr %p\n", block);
+	
+	// back up 4 bytes to get at the size field of the block
+	uint32_t *blockMetadata = block - 1;
+	//printBits(blockMetadata, 4);
+	
+	if ( !(*blockMetadata & MARKBIT) ) {
+		printf("mark(): Marking ptr %p\n", block);
+		size = (*blockMetadata - 4) / sizeof(uint32_t); // get the number of remaining 32bit spots
+		//printf("size: %d\n", size*4 + 4);
+		*blockMetadata |= MARKBIT;
+		//printBits(blockMetadata, 4);
+		for (i = 0; i < size; i++) {
+			//printf("pos: %d, size: %d, block[i]: %d, ptr: %p\n", i, size, block[i], REAL_HEAP_POINTER(block[i]));
+			// might not want to call REAL_HEAP_POINTER here
+			if ( isProbablePointer((uint32_t*) REAL_HEAP_POINTER(block[i])) ) {
+				mark((uint32_t*) REAL_HEAP_POINTER(block[i]));
+			}
+		}
+	} else {
+		printf("mark(): Ptr %p already marked\n", block);
+	}
 }
 
 
 void sweep() {
-    
+	
     printf("\nHEAP\n====\n");
     
     HeapPointer Heap_Iterator = 0;
@@ -446,7 +465,9 @@ void sweep() {
 
         // Move 'size' bytes to next block (ignoring the Mark Bit when determining size)
         Heap_Iterator += ~MARKBIT & *(uint32_t *)REAL_HEAP_POINTER(Heap_Iterator);
-    }  
+        
+        //printBits((char *)REAL_HEAP_POINTER(Heap_Iterator), sizeof(HeapPointer));
+    }
 }
 
 
