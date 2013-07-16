@@ -313,8 +313,7 @@ static void MyHeapFree(void *p) {
     blockPtr->offsetToNextBlock = offsetToFirstBlock;
 
     // add bit pattern for stuff in freelist
-    uint32_t* bp = (uint32_t*) blockPtr->restOfBlock;
-    *bp = FREELISTBITPATTERN;
+    *(uint32_t*)blockPtr->restOfBlock = FREELISTBITPATTERN;
     
     offsetToFirstBlock = p1 - HeapStart;
 }
@@ -361,6 +360,7 @@ void gc() {
         // END TEMP
     
         if(isProbablePointer(REAL_HEAP_POINTER(Stack_Iterator->pval))) {
+            
               mark(REAL_HEAP_POINTER(Stack_Iterator->pval));
         }
         
@@ -417,9 +417,9 @@ void mark(uint32_t *block) {
 	if ( !(*blockMetadata & MARKBIT) ) {
 		printf("mark(): Marking ptr %p\n", block);
 		size = (*blockMetadata - 4) / sizeof(uint32_t); // get the number of remaining 32bit spots
-		//printf("size: %d\n", size*4 + 4);
+		printf("size: %d\n", size*4 + 4);
 		*blockMetadata |= MARKBIT;
-		//printBits(blockMetadata, 4);
+		printBits(blockMetadata, 4);
 		for (i = 0; i < size; i++) {
 			//printf("pos: %d, size: %d, block[i]: %d, ptr: %p\n", i, size, block[i], REAL_HEAP_POINTER(block[i]));
 			// might not want to call REAL_HEAP_POINTER here
