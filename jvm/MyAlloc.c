@@ -87,10 +87,11 @@ static void printByte(char byte) {
    Expects 'numBytes' to be the number of bytes pointed to by 'val'.
    Note: bits will be printed as they are stored in mem, watch
    for endianness */
-static void printBits(char *val, int numBytes) {
+static void printBits(void *val, int numBytes) {
   printf("Printing %d bytes starting at address %p\n",
-	 numBytes, (void*) val);
+	 numBytes, val);
   int i;
+  char *bytePtr = (char*) val;
   for (i = 0; i < numBytes; i++) {
     if ( i % 2 )
       printf("   ");
@@ -98,11 +99,10 @@ static void printBits(char *val, int numBytes) {
       printf("\t");
     else
       printf("\n\t");
-    printByte(*val++);
+    printByte(*bytePtr++);
   }
   printf("\n");
 }
-
 
 
 /* Allocate the Java heap and initialize the free list */
@@ -147,6 +147,11 @@ void *MyHeapAlloc( int size ) {
     int offset, diff, blocksize;
     FreeStorageBlock *blockPtr, *prevBlockPtr, *newBlockPtr;
     int minSizeNeeded = (size + sizeof(blockPtr->size) + 3) & 0xfffffffc;
+
+
+    // we use the top bit for marking and therefor our size 
+    //  is bound to be between 0 and 2^31
+
 
     if (tracingExecution & TRACE_HEAP)
         fprintf(stdout, "* heap allocation request of size %d (augmented to %d)\n",
@@ -313,7 +318,7 @@ int isProbablePointer(void *p) {
   //printf("HeapStart %p HeapEnd %p\n", HeapStart, HeapEnd);
     
     // Pointer checks
-    if((int)p < (int)HeapStart || (int)p > (int)HeapEnd ) {
+  if((int)p < (int)HeapStart || (int)p > (int)HeapEnd ) {
         return 0; // Return False
     }
     
@@ -321,28 +326,27 @@ int isProbablePointer(void *p) {
 }
 
 
-void mark(uint8_t *block) {
+void mark(uint32_t *block) {
   uint32_t size, i;
 
-  printf("mark(): Checking ptr %p\n", block);
+  //printf("mark(): Checking ptr %p\n", block);
 
-  // convert the offset to an actual pointer value
-  uint32_t *heapObject = (uint32_t*) block; //REAL_HEAP_POINTER(block);
   // back up 4 bytes to get at the size field of the block
-  uint32_t *blockMetadata = heapObject - 1;
-  //printBits(blockMetadata, 4);
+  uint32_t *blockMetadata = block - 1;
+  printBits(blockMetadata, 4);
 
   if ( !(*blockMetadata & MARKBIT) ) {
 
     printf("mark(): Marking ptr %p\n", block);
 
-    // we are not marked so, mark us and the pointers we contain
     size = (*blockMetadata - 4) / sizeof(uint32_t); // get the number of remaining 32bit spots
+    printf("size: %d\n", size*4 + 4);
     *blockMetadata |= MARKBIT;
-    //printBits(blockMetadata, 4);
+    printBits(blockMetadata, 4);
     for (i = 0; i < size; i++) {
-      if ( isProbablePointer((uint8_t*) heapObject[i]) )
-	mark((uint8_t*) heapObject[i]);
+      if ( isProbablePointer((uint32_t*) REAL_HEAP_POINTER(block[i])) ) {
+      }
+	//mark((uint32_t*) REAL_HEAP_POINTER(block[i]));
     }
   }
 }
