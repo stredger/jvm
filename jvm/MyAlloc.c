@@ -123,50 +123,54 @@ static void printBlock(void *p) {
         printByte(*bytePtr++);
     }
 
-    switch(*(uint32_t *)(bytePtr - 4)) {
-        case CODE_ARRA:
-            printf("\tKind (=ARRA)");
-            break;
-        case CODE_ARRS:
-            printf("\tKind (=ARRS)");
-            break;
-        case CODE_CLAS:
-            printf("\tKind (=CLAS)");
-            break;
-        case CODE_INST:
-            printf("\tKind (=INST)");
-            break;
-        case CODE_STRG:
-            printf("\tKind (=STRG)");
-            break;
-        case CODE_SBLD:
-            printf("\tKind (=SBLD)");
-            break;    
-        default:
-            printf("\tKind (=?)");
-            break;   
-    };
-    
-    if(!(MARKBIT & *(uint32_t *)p)) {  
-        printf(" or Reference to next free block");
+    if(*(uint32_t *)(p + 8) == FREELISTBITPATTERN) {
+        printf("\tRef. to next free block");
         switch(*(uint32_t *)(bytePtr - 4)) {
             case 0xFFFFFFFF:
                 printf(" (=NONE)\n");
                 break;
             default:
-                printf(" (=%p)\n", (void*) *(uint32_t *)(bytePtr - 4));
+                printf(" (=%p)\n", REAL_HEAP_POINTER(*(uint32_t *)(p + 4)));
         };
+        
+        for(i = 0; i < 4; i++) {
+            printf("    ");
+            printByte(*bytePtr++);
+        }
+        printf("\t\"Free List\" Bit Pattern (=%X)\n", FREELISTBITPATTERN);
+        
     }
     else {
-        printf("\n"); 
-    }
+        switch(*(uint32_t *)(bytePtr - 4)) {
+            case CODE_ARRA:
+                printf("\tKind (=ARRA)\n");
+                break;
+            case CODE_ARRS:
+                printf("\tKind (=ARRS)\n");
+                break;
+            case CODE_CLAS:
+                printf("\tKind (=CLAS)\n");
+                break;
+            case CODE_INST:
+                printf("\tKind (=INST)\n");
+                break;
+            case CODE_STRG:
+                printf("\tKind (=STRG)\n");
+                break;
+            case CODE_SBLD:
+                printf("\tKind (=SBLD)\n");
+                break;    
+            default:
+                printf("\tKind (=?)\n");
+                break;   
+        };
 
-    for(i = 0; i < 4; i++) {
-        printf("    ");
-        printByte(*bytePtr++);
+        for(i = 0; i < 4; i++) {
+            printf("    ");
+            printByte(*bytePtr++);
+        }
+        printf("\tContent\n");
     }
-    printf("\tContent (if active or garbage) / FreePattern (if free)\n");
-    
     
     printf("    ...");
     for(i=0; i<49; i++)
@@ -178,23 +182,23 @@ static void printBlock(void *p) {
 static void printStack() {
     DataItem *Stack_Iterator = JVM_Top;
     
-    printf("\n=============\n");
+    printf("\n-------------\n");
     printf("Stack -- Top\n");
-    printf("=============\n");
+    printf("-------------\n");
     while(Stack_Iterator >= JVM_Stack) {
         printf("ival: %d \tuval: %d \tfval: %f \tpval: %p\n", Stack_Iterator->ival, Stack_Iterator->uval, Stack_Iterator->fval, REAL_HEAP_POINTER(Stack_Iterator->pval));
         
         Stack_Iterator--;
     }
-    printf("================\n");
+    printf("----------------\n");
     printf("Stack -- Bottom\n");
-    printf("================\n\n");
+    printf("----------------\n\n");
 }
 
 static void printHeap() {
-    printf("\n=========================\n");
-    printf("Heap -- Start - %p\n", HeapStart);
-    printf("=========================\n");
+    printf("\n------------------------\n");
+    printf("Heap -- Start: %p\n", HeapStart);
+    printf("------------------------\n");
     
     HeapPointer Heap_Iterator = 0;
     while(Heap_Iterator < MaxHeapPtr) {
@@ -202,9 +206,9 @@ static void printHeap() {
         Heap_Iterator += ~MARKBIT & *(uint32_t *)REAL_HEAP_POINTER(Heap_Iterator);
     }
 
-    printf("=======================\n");
-    printf("Heap -- End - %p\n", HeapEnd);
-    printf("=======================\n\n");
+    printf("----------------------\n");
+    printf("Heap -- End: %p\n", HeapEnd);
+    printf("----------------------\n\n");
 }
 
 
@@ -331,7 +335,6 @@ void *MyHeapAlloc( int size ) {
         newBlockPtr->size = diff;
         newBlockPtr->offsetToNextBlock = blockPtr->offsetToNextBlock;
         *(uint32_t *)newBlockPtr->restOfBlock = FREELISTBITPATTERN;
-        printBits(newBlockPtr->restOfBlock, 4);
         
         if (tracingExecution & TRACE_HEAP)
             fprintf(stdout, "* free list block of size %d split into %d + %d\n",
@@ -411,26 +414,36 @@ static void MyHeapFree(void *p) {
 void gc() {
     gcCount++;
     
-    // TEMP
-    printf("\nStarting Garbage Collection...\n");
-    printf("\nCLASSFILES\n=====\n");
-    // END TEMP
+    if (tracingExecution & TRACE_HEAP) {
+        printf("Starting Garbage Collection...\n");
+        printf("\nMarking Fake_System_Out...\n\==========================\n");
+    }
 
 	// We must mark this fake file descriptor
 	mark(Fake_System_Out);
-    printf("Fake_System_Out = %p\n", Fake_System_Out);
+    
+    if (tracingExecution & TRACE_HEAP)
+        printf("\nMarking Classes...\n==================\n");
 
 	// The class list is a linked list so mark, being recursive,
 	//  should get all the class files on the heap. However, to
 	//  be really safe call mark on all the classfiles manually
 	ClassType *ct = FirstLoadedClass;
 	while (ct) {
+        if (tracingExecution & TRACE_HEAP) {
+            printf("Class: %p, nextClass: %p\n", ct, ct->nextClass);
+        }
 		mark(ct);
-		printf("class: %p, nextclass: %p\n", ct, ct->nextClass);
 		ct = ct->nextClass;
 	}
     
-    printStack();
+	if (tracingExecution & TRACE_HEAP)
+        printf("\nMarking Stack...\n================\n");
+    
+    if (tracingExecution & TRACE_GC)  {
+        printf("State of stack is as follows.\n");
+        printStack();
+    }
     
     DataItem *Stack_Iterator = JVM_Top;
     while(Stack_Iterator >= JVM_Stack) {
@@ -440,11 +453,19 @@ void gc() {
         Stack_Iterator--;
     }
       
-    // TEMP
-    printf("\n");
-    // END TEMP
+    if (tracingExecution & TRACE_HEAP)
+        printf("\nSweeping...\n===========\n");
+    if (tracingExecution & TRACE_GC)
+        printf("State of heap prior to sweep is as follows.\n");
+    if (tracingExecution & TRACE_GC) 
+        printHeap();
     
     sweep();
+    
+    if (tracingExecution & TRACE_GC)
+        printf("\nState of heap following sweep is as follows.\n");
+    if (tracingExecution & TRACE_GC) 
+        printHeap();
     
 }
 
@@ -517,8 +538,6 @@ void mark(uint32_t *block) {
     the mark function is put into the new freelist by MyHeapFree().
 */
 void sweep() {
-	
-    //printHeap();
 
 	// we rebuild the freelist at each gc, so reset it!
     offsetToFirstBlock = -1;
@@ -535,8 +554,8 @@ void sweep() {
             if (FREELISTBITPATTERN != 
 				*(uint32_t *)REAL_HEAP_POINTER(Heap_Iterator + 8)) {
 				
-                printf("sweep(): Found garbage at %p\n", 
-					   REAL_HEAP_POINTER(Heap_Iterator)); 
+                if (tracingExecution & TRACE_HEAP) 
+                    printf("sweep(): Found garbage at %p\n", REAL_HEAP_POINTER(Heap_Iterator)); 
                 
                 // Statistics tracking
                 totalBytesRecovered += 
@@ -552,8 +571,6 @@ void sweep() {
 
         // Move 'size' bytes to next block (ignoring the Mark Bit when determining size)
         Heap_Iterator += ~MARKBIT & *(uint32_t *)REAL_HEAP_POINTER(Heap_Iterator);
-        
-        //printBits((char *)REAL_HEAP_POINTER(Heap_Iterator), sizeof(HeapPointer));
     }
 	//printHeap();
 }
