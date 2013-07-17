@@ -198,7 +198,7 @@ int InterpretMethod( ClassType *thisClass, method_info *method, DataItem *localV
             break;
         case OP_areturn:
             /*  objectref --> [empty] 	returns a reference from a method */
-            localVariable[0].pval = JVM_PopReference();
+            //localVariable[0].pval = JVM_PopReference();
             return 1;
         case OP_arraylength:
             /*  arrayref --> length 	gets the length of an array */
