@@ -103,6 +103,7 @@ static void printBits(void *val, int numBytes) {
 			printf("\t");
 		else
 			printf("\t");
+        printByte(*bytePtr++);
 		
 	}
 	printf("\n");
@@ -123,12 +124,42 @@ static void printBlock(void *p) {
         printf("    ");
         printByte(*bytePtr++);
     }
-    
-    if((MARKBIT & *(uint32_t *)p)) {
-         printf("\tContent\n");
+      
+    switch(*(uint32_t *)(bytePtr - 4)) {
+        case CODE_ARRA:
+            printf("\tKind (=ARRA)");
+            break;
+        case CODE_ARRS:
+            printf("\tKind (=ARRS)");
+            break;
+        case CODE_CLAS:
+            printf("\tKind (=CLAS)");
+            break;
+        case CODE_INST:
+            printf("\tKind (=INST)");
+            break;
+        case CODE_STRG:
+            printf("\tKind (=STRG)");
+            break;
+        case CODE_SBLD:
+            printf("\tKind (=SBLD)");
+            break;    
+        default:
+            printf("\tKind (=?)");
+            break;   
+    };
+    if(!(MARKBIT & *(uint32_t *)p)) {  
+        printf(" or Reference to next free block");
+        switch(*(uint32_t *)(bytePtr - 4)) {
+            case 0xFFFFFFFF:
+                printf(" (=NONE)\n");
+                break;
+            default:
+                printf(" (=%p)\n", *(uint32_t *)(bytePtr - 4));
+        };
     }
     else {
-        printf("\tContent (if garbage) / Reference to next free block (if free)\n");
+        printf("\n"); 
     }
     
     
@@ -137,6 +168,7 @@ static void printBlock(void *p) {
         printByte(*bytePtr++);
     }
     printf("\tContent (if active or garbage) / FreePattern (if free)\n");
+    
     
     printf("    ...");
     for(i=0; i<49; i++)
@@ -148,9 +180,9 @@ static void printBlock(void *p) {
 static void printStack() {
     DataItem *Stack_Iterator = JVM_Top;
     
-    printf("\n================\n");
+    printf("\n=============\n");
     printf("Stack -- Top\n");
-    printf("================\n");
+    printf("=============\n");
     while(Stack_Iterator >= JVM_Stack) {
         printf("ival: %d \tuval: %d \tfval: %f \tpval: %p\n", Stack_Iterator->ival, Stack_Iterator->uval, Stack_Iterator->fval, REAL_HEAP_POINTER(Stack_Iterator->pval));
         
@@ -378,6 +410,7 @@ void gc() {
 
 	// We must mark this fake file descriptor
 	mark(Fake_System_Out);
+    printf("Fake_System_Out = %p\n", Fake_System_Out);
 
 	// The class list is a linked list so mark, being recursive,
 	//  should get all the class files on the heap. However, to
@@ -433,6 +466,18 @@ int isProbablePointer(void *p) {
 		return 0;
 	}
 	
+	// check if the block has a valid kind field
+	switch(*(uint32_t *)p) {
+        case CODE_ARRA:
+        case CODE_ARRS:
+        case CODE_CLAS:
+        case CODE_INST:
+        case CODE_STRG:
+        case CODE_SBLD:
+            break;    
+        default:
+            return 0; // Return False
+    };
 
 	return 1; // Return True
 }
