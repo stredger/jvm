@@ -123,15 +123,14 @@ static void printBlock(void *p) {
         printf("    ");
         printByte(*bytePtr++);
     }
-    
+
     if((MARKBIT & *(uint32_t *)p)) {
          printf("\tContent\n");
     }
     else {
         printf("\tContent (if garbage) / Reference to next free block (if free)\n");
     }
-    
-    
+
     for(i = 0; i < 4; i++) {
         printf("    ");
         printByte(*bytePtr++);
@@ -360,10 +359,8 @@ void gc() {
         // END TEMP
     
         if(isProbablePointer(REAL_HEAP_POINTER(Stack_Iterator->pval))) {
-            
               mark(REAL_HEAP_POINTER(Stack_Iterator->pval));
         }
-        
         Stack_Iterator--;
     }
       
@@ -400,8 +397,6 @@ int isProbablePointer(void *p) {
 	if (blockSize > MAXBLOCKSIZE || blockSize < MINBLOCKSIZE) {
 		return 0;
 	}
-	
-
 	return 1; // Return True
 }
 
@@ -423,7 +418,6 @@ void mark(uint32_t *block) {
 		printBits(blockMetadata, 4);
 		for (i = 0; i < size; i++) {
 			//printf("pos: %d, size: %d, block[i]: %d, ptr: %p\n", i, size, block[i], REAL_HEAP_POINTER(block[i]));
-			// might not want to call REAL_HEAP_POINTER here
 			if ( isProbablePointer((uint32_t*) REAL_HEAP_POINTER(block[i])) ) {
 				mark((uint32_t*) REAL_HEAP_POINTER(block[i]));
 			}
