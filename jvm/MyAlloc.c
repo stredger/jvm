@@ -416,7 +416,7 @@ void gc() {
     
     if (tracingExecution & TRACE_HEAP) {
         printf("Starting Garbage Collection...\n");
-        printf("\nMarking Fake_System_Out...\n\==========================\n");
+        printf("\nMarking Fake_System_Out...\n==========================\n");
     }
 
 	// We must mark this fake file descriptor
@@ -514,6 +514,9 @@ int isProbablePointer(void *p) {
 void mark(uint32_t *block) {
 	uint32_t size, i;
 
+    fprintf(stdout, "mark(): Checking ptr %p - size %d kind %x content %p\n", block, *(block-4), *block, *(block+4));
+    
+    
 	// back up 4 bytes to get at the size field of the block
 	uint32_t *blockMetadata = block - 1;
 	
@@ -521,10 +524,10 @@ void mark(uint32_t *block) {
 		if (tracingExecution & TRACE_HEAP)
 			fprintf(stdout, "mark(): Marking ptr %p\n", block);
 
+        // iterate over the number of remaining 32bit spots
+        size = (*blockMetadata - 4) / sizeof(uint32_t);
+        
 		*blockMetadata |= MARKBIT; // set the mark bit
-
-		// iterate over the number of remaining 32bit spots
-		size = (*blockMetadata - 4) / sizeof(uint32_t);
 		for (i = 0; i < size; i++) {
 			if ( isProbablePointer((uint32_t*) REAL_HEAP_POINTER(block[i])) ) {
 				mark((uint32_t*) REAL_HEAP_POINTER(block[i]));
