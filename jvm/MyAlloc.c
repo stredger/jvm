@@ -391,9 +391,9 @@ static void MyHeapFree(void *p) {
 		}
 	}
    
-	if (tracingExecution & TRACE_HEAP)
+	if (tracingExecution & TRACE_GC)
 		fprintf(stdout, "Adding Block to Freelist - Block size = %d" 
-				"Pointer = %p Heap end = %p\n",
+				" Pointer = %p Heap end = %p\n",
 				blockSize, p1, HeapEnd);
 
     /* link the block into the free list at the front */
@@ -514,9 +514,6 @@ int isProbablePointer(void *p) {
 void mark(uint32_t *block) {
 	uint32_t size, i;
 
-    fprintf(stdout, "mark(): Checking ptr %p - size %d kind %x content %p\n", block, *(block-4), *block, *(block+4));
-    
-    
 	// back up 4 bytes to get at the size field of the block
 	uint32_t *blockMetadata = block - 1;
 	
