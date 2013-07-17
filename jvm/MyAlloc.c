@@ -124,7 +124,7 @@ static void printBlock(void *p) {
         printf("    ");
         printByte(*bytePtr++);
     }
-      
+
     switch(*(uint32_t *)(bytePtr - 4)) {
         case CODE_ARRA:
             printf("\tKind (=ARRA)");
@@ -148,6 +148,7 @@ static void printBlock(void *p) {
             printf("\tKind (=?)");
             break;   
     };
+    
     if(!(MARKBIT & *(uint32_t *)p)) {  
         printf(" or Reference to next free block");
         switch(*(uint32_t *)(bytePtr - 4)) {
@@ -161,8 +162,7 @@ static void printBlock(void *p) {
     else {
         printf("\n"); 
     }
-    
-    
+
     for(i = 0; i < 4; i++) {
         printf("    ");
         printByte(*bytePtr++);
@@ -432,10 +432,8 @@ void gc() {
     
     
         if(isProbablePointer(REAL_HEAP_POINTER(Stack_Iterator->pval))) {
-            
               mark(REAL_HEAP_POINTER(Stack_Iterator->pval));
         }
-        
         Stack_Iterator--;
     }
       
@@ -449,7 +447,7 @@ void gc() {
 }
 
 int isProbablePointer(void *p) {
-
+    
 	if ( (uint8_t) p % 4 ) {
 		return 0; // we are not 4 byte alligned
 	}
@@ -500,7 +498,6 @@ void mark(uint32_t *block) {
 		printBits(blockMetadata, 4);
 		for (i = 0; i < size; i++) {
 			//printf("pos: %d, size: %d, block[i]: %d, ptr: %p\n", i, size, block[i], REAL_HEAP_POINTER(block[i]));
-			// might not want to call REAL_HEAP_POINTER here
 			if ( isProbablePointer((uint32_t*) REAL_HEAP_POINTER(block[i])) ) {
 				mark((uint32_t*) REAL_HEAP_POINTER(block[i]));
 			}
