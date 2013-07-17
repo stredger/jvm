@@ -145,6 +145,38 @@ static void printBlock(void *p) {
     
 }
 
+static void printStack() {
+    DataItem *Stack_Iterator = JVM_Top;
+    
+    printf("\n================\n");
+    printf("Stack -- Top\n");
+    printf("================\n");
+    while(Stack_Iterator >= JVM_Stack) {
+        printf("ival: %d \tuval: %d \tfval: %f \tpval: %p\n", Stack_Iterator->ival, Stack_Iterator->uval, Stack_Iterator->fval, REAL_HEAP_POINTER(Stack_Iterator->pval));
+        
+        Stack_Iterator--;
+    }
+    printf("================\n");
+    printf("Stack -- Bottom\n");
+    printf("================\n\n");
+}
+
+static void printHeap() {
+    printf("\n=========================\n");
+    printf("Heap -- Start - %p\n", HeapStart);
+    printf("=========================\n");
+    
+    HeapPointer Heap_Iterator = 0;
+    while(Heap_Iterator < MaxHeapPtr) {
+        printBlock(REAL_HEAP_POINTER(Heap_Iterator));
+        Heap_Iterator += ~MARKBIT & *(uint32_t *)REAL_HEAP_POINTER(Heap_Iterator);
+    }
+
+    printf("=======================\n");
+    printf("Heap -- End - %p\n", HeapEnd);
+    printf("=======================\n\n");
+}
+
 
 /* Allocate the Java heap and initialize the free list */
 void InitMyAlloc( int HeapSize ) {
@@ -304,7 +336,16 @@ static void MyHeapFree(void *p) {
     p1 -= sizeof(blockPtr->size);
     /* now check the size field for validity */
     blockSize = *(uint32_t*)p1;
-    if (blockSize < MINBLOCKSIZE || (p1 + blockSize) >= HeapEnd || (blockSize & 3) != 0) {
+    
+    
+    // TEMP
+    printf("Freeing - Block size = %d Pointer = %d Heap end = %d\n", blockSize, p1, HeapEnd);
+    
+    
+    
+    
+    
+    if (blockSize < MINBLOCKSIZE || (p1 + blockSize) > HeapEnd || (blockSize & 3) != 0) {
         fprintf(stderr, "bad call to MyHeapFree -- invalid block\n");
         exit(1);
     }
@@ -326,9 +367,11 @@ static void MyHeapFree(void *p) {
 */
 void gc() {
     gcCount++;
-    fprintf(stderr, "garbage collection is unimplemented\n");
+    
+    
     
     // TEMP
+    printf("\nStarting Garbage Collection...\n");
     printf("\nCLASSFILES\n=====\n");
     // END TEMP
 
@@ -348,16 +391,12 @@ void gc() {
 	// mark(FirstLoadedClass); // use this when we want speed!
 
     
-    // TEMP
-    printf("\nSTACK\n=====\n");
-    // END TEMP
+    printStack();
     
     DataItem *Stack_Iterator = JVM_Top;
     while(Stack_Iterator >= JVM_Stack) {
         
-        // TEMP
-        printf("ival: %d uval: %d fval: %f pval: %p\n", Stack_Iterator->ival, Stack_Iterator->uval, Stack_Iterator->fval, REAL_HEAP_POINTER(Stack_Iterator->pval));
-        // END TEMP
+    
     
         if(isProbablePointer(REAL_HEAP_POINTER(Stack_Iterator->pval))) {
             
@@ -374,18 +413,9 @@ void gc() {
     
     sweep();
     
-    // The following lines of code exist only so that the compiler does not
-    // generate a warning message that MyHeapFree is defined but not used.
-    if (0) {
-    	MyHeapFree(NULL);
-    }
 }
 
 int isProbablePointer(void *p) {
-    
-	//printf("HeapStart %p HeapEnd %p\n", HeapStart, HeapEnd);
-	
-	printf("pointer: %p\n", p);
 
 	if ( (uint8_t) p % 4 ) {
 		return 0; // we are not 4 byte alligned
@@ -399,7 +429,7 @@ int isProbablePointer(void *p) {
 	
 	// check the block has a valid size
 	uint32_t blockSize = *( ((uint32_t*) p) - 1 );
-	if (blockSize > MAXBLOCKSIZE || blockSize < MINBLOCKSIZE) {
+	if (blockSize > MAXBLOCKSIZE || blockSize < MINBLOCKSIZE || blockSize > (HeapEnd - HeapStart)) {
 		return 0;
 	}
 	
@@ -438,16 +468,15 @@ void mark(uint32_t *block) {
 
 void sweep() {
 	
-    printf("\nHEAP\n====\n");
+    printHeap();
     
     HeapPointer Heap_Iterator = 0;
     while(Heap_Iterator < MaxHeapPtr) {
 
         
-        printBlock(REAL_HEAP_POINTER(Heap_Iterator));
+        //printBlock(REAL_HEAP_POINTER(Heap_Iterator));
         
         if(!(MARKBIT & *(uint32_t *)REAL_HEAP_POINTER(Heap_Iterator))) {
-            printf("Not marked\n");
             
             if(FREELISTBITPATTERN != *(uint32_t *)REAL_HEAP_POINTER(Heap_Iterator + 8)) {
             
@@ -461,7 +490,6 @@ void sweep() {
  
         }
         else { 
-            printf("Marked!\n\n");
             // Unmark
             *(uint32_t *)REAL_HEAP_POINTER(Heap_Iterator) &= ~MARKBIT;
         }
