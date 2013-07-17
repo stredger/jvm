@@ -154,7 +154,7 @@ static void printBlock(void *p) {
                 printf(" (=NONE)\n");
                 break;
             default:
-                printf(" (=%p)\n", *(uint32_t *)(bytePtr - 4));
+                printf(" (=%p)\n", (void*) *(uint32_t *)(bytePtr - 4));
         };
     }
     else {
@@ -374,22 +374,24 @@ static void MyHeapFree(void *p) {
 	
 	blockPtr = (FreeStorageBlock*)p1;
 
-	// there is already something in the freelist, so see if we can combine
 	if (offsetToFirstBlock > -1) {
+		// there is already something in the freelist, so see if we can combine
 		freelistBlock = (FreeStorageBlock*) REAL_HEAP_POINTER(offsetToFirstBlock);
 
-		if (freelistBlock->size + (unsigned long) freelistBlock == blockPtr) {
-
-			printf("Combining free blocks %p and %p\n", freelistBlock, blockPtr);
+		if ( freelistBlock->size + (void*) freelistBlock == blockPtr) {
+			if (tracingExecution & TRACE_HEAP)
+				fprintf(stdout, "Combining Freelist blocks %p and %p\n", 
+						freelistBlock, blockPtr);
 			// p1 is the next block so combine sizes and we are done
 			freelistBlock->size += blockPtr->size;
 			return;
 		}
 	}
    
-    // TEMP
-    printf("Adding Block to Freelist - Block size = %d Pointer = %p Heap end = %p\n",
-		   blockSize, p1, HeapEnd);
+	if (tracingExecution & TRACE_HEAP)
+		fprintf(stdout, "Adding Block to Freelist - Block size = %d" 
+				"Pointer = %p Heap end = %p\n",
+				blockSize, p1, HeapEnd);
 
     /* link the block into the free list at the front */
     blockPtr->offsetToNextBlock = offsetToFirstBlock;
@@ -485,36 +487,38 @@ int isProbablePointer(void *p) {
 }
 
 
+/* Mark the leftmost bit of the size field for an object
+    on the heap. We then go through the data portion and 
+    check for other pointers to mark */
 void mark(uint32_t *block) {
 	uint32_t size, i;
-	
-	printf("mark(): Checking ptr %p\n", block);
-	
+
 	// back up 4 bytes to get at the size field of the block
 	uint32_t *blockMetadata = block - 1;
-	//printBits(blockMetadata, 4);
 	
 	if ( !(*blockMetadata & MARKBIT) ) {
-		printf("mark(): Marking ptr %p\n", block);
-		size = (*blockMetadata - 4) / sizeof(uint32_t); // get the number of remaining 32bit spots
-		//printf("size: %d, numEntires: %d\n", size*4 + 4, size);
-		*blockMetadata |= MARKBIT;
-		//printBits(blockMetadata, 4);
+		if (tracingExecution & TRACE_HEAP)
+			fprintf(stdout, "mark(): Marking ptr %p\n", block);
+
+		*blockMetadata |= MARKBIT; // set the mark bit
+
+		// iterate over the number of remaining 32bit spots
+		size = (*blockMetadata - 4) / sizeof(uint32_t);
 		for (i = 0; i < size; i++) {
-			//printf("pos: %d, size: %d, block[i]: %d, ptr: %p\n", i, size, block[i], REAL_HEAP_POINTER(block[i]));
 			if ( isProbablePointer((uint32_t*) REAL_HEAP_POINTER(block[i])) ) {
 				mark((uint32_t*) REAL_HEAP_POINTER(block[i]));
 			}
 		}
-	} else {
-		printf("mark(): Ptr %p already marked\n", block);
 	}
 }
 
-
+/* Sweep over the heap collecting garbage. This is accomplished
+    by rebuilding the freelist. Anything that was not marked by
+    the mark function is put into the new freelist by MyHeapFree().
+*/
 void sweep() {
 	
-    printHeap();
+    //printHeap();
 
 	// we rebuild the freelist at each gc, so reset it!
     offsetToFirstBlock = -1;
@@ -551,6 +555,7 @@ void sweep() {
         
         //printBits((char *)REAL_HEAP_POINTER(Heap_Iterator), sizeof(HeapPointer));
     }
+	//printHeap();
 }
 
 
