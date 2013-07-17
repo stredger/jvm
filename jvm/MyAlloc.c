@@ -44,7 +44,7 @@
 #define MAXBLOCKSIZE (((uint32_t)(~0x80000000)) - 4)
 
 /* this pattern will appear in blocks in the freelist  */
-#define FREELISTBITPATTERN 0x0BADA550 //0xF7EE
+#define FREELISTBITPATTERN 0x0BADA550
 
 /* this is the 32 bit bitmask for the mark bit */
 #define MARKBIT 0x80000000
@@ -102,10 +102,9 @@ static void printBits(void *val, int numBytes) {
 		else if (i == 0)
 			printf("\t");
 		else
-			printf("\t");
-		
+			printf("\t\n");
+		printByte(*bytePtr++);
 	}
-	printf("\n");
 }
 
 static void printBlock(void *p) {
@@ -310,7 +309,7 @@ void *MyHeapAlloc( int size ) {
     totalBytesRequested += minSizeNeeded;
     numAllocations++;
     
-    // Remove "Free" code
+    // Remove the FREELISTBITPATTERN
     *(uint32_t *)blockPtr->restOfBlock = 0;
 
     return (uint8_t*)blockPtr + sizeof(blockPtr->size);
@@ -325,7 +324,7 @@ void *MyHeapAlloc( int size ) {
 static void MyHeapFree(void *p) {
     uint8_t *p1 = (uint8_t*)p;
     int blockSize;
-    FreeStorageBlock *blockPtr;
+    FreeStorageBlock *blockPtr, *freelistBlock;
 	
     if (p1 < HeapStart || p1 >= HeapEnd || ((p1-HeapStart) & 3) != 0) {
         fprintf(stderr, "bad call to MyHeapFree -- bad pointer\n");
@@ -336,20 +335,31 @@ static void MyHeapFree(void *p) {
     /* now check the size field for validity */
     blockSize = *(uint32_t*)p1;
     
-    
-    // TEMP
-    printf("Freeing - Block size = %d Pointer = %d Heap end = %d\n", blockSize, p1, HeapEnd);
-    
-    
-    
-    
-    
     if (blockSize < MINBLOCKSIZE || (p1 + blockSize) > HeapEnd || (blockSize & 3) != 0) {
         fprintf(stderr, "bad call to MyHeapFree -- invalid block\n");
         exit(1);
     }
+	
+	blockPtr = (FreeStorageBlock*)p1;
+
+	// there is already something in the freelist, so see if we can combine
+	if (offsetToFirstBlock > -1) {
+		freelistBlock = (FreeStorageBlock*) REAL_HEAP_POINTER(offsetToFirstBlock);
+
+		if (freelistBlock->size + (unsigned long) freelistBlock == blockPtr) {
+
+			printf("Combining free blocks %p and %p\n", freelistBlock, blockPtr);
+			// p1 is the next block so combine sizes and we are done
+			freelistBlock->size += blockPtr->size;
+			return;
+		}
+	}
+   
+    // TEMP
+    printf("Adding Block to Freelist - Block size = %d Pointer = %p Heap end = %p\n",
+		   blockSize, p1, HeapEnd);
+
     /* link the block into the free list at the front */
-    blockPtr = (FreeStorageBlock*)p1;
     blockPtr->offsetToNextBlock = offsetToFirstBlock;
 
     // add bit pattern for stuff in freelist
@@ -367,13 +377,10 @@ static void MyHeapFree(void *p) {
 void gc() {
     gcCount++;
     
-    
-    
     // TEMP
     printf("\nStarting Garbage Collection...\n");
     printf("\nCLASSFILES\n=====\n");
     // END TEMP
-
 
 	// We must mark this fake file descriptor
 	mark(Fake_System_Out);
@@ -387,23 +394,17 @@ void gc() {
 		printf("class: %p, nextclass: %p\n", ct, ct->nextClass);
 		ct = ct->nextClass;
 	}
-	// mark(FirstLoadedClass); // use this when we want speed!
-
     
     printStack();
     
     DataItem *Stack_Iterator = JVM_Top;
     while(Stack_Iterator >= JVM_Stack) {
-        
-    
-    
         if(isProbablePointer(REAL_HEAP_POINTER(Stack_Iterator->pval))) {
               mark(REAL_HEAP_POINTER(Stack_Iterator->pval));
         }
         Stack_Iterator--;
     }
       
-    
     // TEMP
     printf("\n");
     // END TEMP
@@ -412,24 +413,28 @@ void gc() {
     
 }
 
+/* Returns 1 if the pointer p is a valid pointer into the 
+   java heap, 0 otherwise */
 int isProbablePointer(void *p) {
     
-	if ( (uint8_t) p % 4 ) {
-		return 0; // we are not 4 byte alligned
-	}
-	
-	// Pointer checks
-	if ( p < (void*)(HeapStart + 4) || 
+	// check the pointer is valid
+	if ( (uint8_t) p % 4 || // must be 4 byte alligned
+		 // the first valid pointer is HeapStart + 4
+		 p < (void*)(HeapStart + 4) ||
+		 // and the last is HeapEnd - MINBLOCKSIZE
 		 p > ( (void*)(HeapEnd - MINBLOCKSIZE) )) {
-		return 0; // Return False
+		return 0;
 	}
 	
 	// check the block has a valid size
 	uint32_t blockSize = *( ((uint32_t*) p) - 1 );
-	if (blockSize > MAXBLOCKSIZE || blockSize < MINBLOCKSIZE || blockSize > (HeapEnd - HeapStart)) {
+	if (blockSize > MAXBLOCKSIZE || 
+		blockSize < MINBLOCKSIZE || 
+		blockSize > (HeapEnd - HeapStart) ||
+		blockSize % 4) { // block sizes are always a multiple of 4
 		return 0;
 	}
-	return 1; // Return True
+	return 1;
 }
 
 
@@ -447,7 +452,7 @@ void mark(uint32_t *block) {
 		size = (*blockMetadata - 4) / sizeof(uint32_t); // get the number of remaining 32bit spots
 		//printf("size: %d, numEntires: %d\n", size*4 + 4, size);
 		*blockMetadata |= MARKBIT;
-		printBits(blockMetadata, 4);
+		//printBits(blockMetadata, 4);
 		for (i = 0; i < size; i++) {
 			//printf("pos: %d, size: %d, block[i]: %d, ptr: %p\n", i, size, block[i], REAL_HEAP_POINTER(block[i]));
 			if ( isProbablePointer((uint32_t*) REAL_HEAP_POINTER(block[i])) ) {
@@ -463,27 +468,33 @@ void mark(uint32_t *block) {
 void sweep() {
 	
     printHeap();
-    
+
+	// we rebuild the freelist at each gc, so reset it!
+    offsetToFirstBlock = -1;
+
     HeapPointer Heap_Iterator = 0;
     while(Heap_Iterator < MaxHeapPtr) {
-
-        
+   
         //printBlock(REAL_HEAP_POINTER(Heap_Iterator));
         
-        if(!(MARKBIT & *(uint32_t *)REAL_HEAP_POINTER(Heap_Iterator))) {
-            
-            if(FREELISTBITPATTERN != *(uint32_t *)REAL_HEAP_POINTER(Heap_Iterator + 8)) {
-            
-                printf("Freeing block at %p\n\n", REAL_HEAP_POINTER(Heap_Iterator)); 
-                MyHeapFree(REAL_HEAP_POINTER(Heap_Iterator + 4));
+        if( !(MARKBIT & *(uint32_t *)REAL_HEAP_POINTER(Heap_Iterator)) ) {
+			// we are not marked, if we were not in the 
+			//  previous freelist we are garbage, so lets 
+			//  collect some stats!
+            if (FREELISTBITPATTERN != 
+				*(uint32_t *)REAL_HEAP_POINTER(Heap_Iterator + 8)) {
+				
+                printf("sweep(): Found garbage at %p\n", 
+					   REAL_HEAP_POINTER(Heap_Iterator)); 
                 
                 // Statistics tracking
-                totalBytesRecovered += *(uint32_t *)REAL_HEAP_POINTER(Heap_Iterator);
+                totalBytesRecovered += 
+					*(uint32_t *)REAL_HEAP_POINTER(Heap_Iterator);
                 totalBlocksRecovered++;
             }
+			MyHeapFree(REAL_HEAP_POINTER(Heap_Iterator + 4));
  
-        }
-        else { 
+        } else { 
             // Unmark
             *(uint32_t *)REAL_HEAP_POINTER(Heap_Iterator) &= ~MARKBIT;
         }
