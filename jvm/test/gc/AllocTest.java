@@ -4,11 +4,11 @@ class AllocTest {
 
     public static void main(String[] args) {
 
-	//System.out.println("Hello World!");
-    String d = "Garbage";
-    d = "Not Garbage";
-	System.gc();
+        String[] s = new String[500];
+        String[] t = new String[500];
+        String[] u = new String[500];
 
-    }
+        //System.gc();
+	}
 
 }
